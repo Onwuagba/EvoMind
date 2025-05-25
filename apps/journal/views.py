@@ -1,23 +1,139 @@
-from django.shortcuts import render
-from rest_framework import viewsets
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from drf_yasg.utils import swagger_auto_schema
+from django.core.cache import cache
+from django.core.cache.backends.base import DEFAULT_TIMEOUT
+from django.conf import settings
 from journal.models import Journal
 from journal.serializers import JournalSerializer 
+from .pagination import JournalPagination
+from .throttling import JournalRateThrottle
+
+CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
 class JournalViewSet(viewsets.ModelViewSet):
     serializer_class = JournalSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = JournalPagination
+    throttle_classes = [JournalRateThrottle]
 
     def get_queryset(self):
-        return Journal.objects.filter(user=self.request.user)
+        return Journal.objects.filter(
+            user=self.request.user,
+            is_deleted=False
+        )
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def get_cache_key(self, pk=None):
+        if pk:
+            return f"journal_{self.request.user.id}_{pk}"
+        return f"journal_list_{self.request.user.id}"
 
-    @swagger_auto_schema(
-        operation_description="Get all journal entries for authenticated user",
-        responses={200: JournalSerializer(many=True)}
-    )
     def list(self, request, *args, **kwargs):
-        return super().list(request, *args, **kwargs)
+        cache_key = self.get_cache_key()
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
+
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, many=True)
+
+        response_data = {
+            'status': 'success',
+            'data': serializer.data,
+            'meta': {
+                'pagination': {
+                    'page': self.paginator.page.number,
+                    'limit': self.paginator.page_size,
+                    'total': self.paginator.page.paginator.count,
+                    'totalPages': self.paginator.page.paginator.num_pages,
+                }
+            }
+        }
+
+        cache.set(cache_key, response_data, CACHE_TTL)
+        return Response(response_data)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            self.perform_create(serializer)
+            return Response({
+                'status': 'success',
+                'data': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'validation_error',
+                    'message': str(e),
+                    'details': serializer.errors
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    def retrieve(self, request, *args, **kwargs):
+        cache_key = self.get_cache_key(kwargs['pk'])
+        cached_data = cache.get(cache_key)
+
+        if cached_data:
+            return Response(cached_data)
+
+        try:
+            instance = self.get_object()
+            serializer = self.get_serializer(instance)
+            response_data = {
+                'status': 'success',
+                'data': serializer.data
+            }
+            cache.set(cache_key, response_data, CACHE_TTL)
+            return Response(response_data)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'not_found',
+                    'message': str(e)
+                }
+            }, status=status.HTTP_404_NOT_FOUND)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            instance.is_deleted = True
+            instance.save()
+            cache.delete(self.get_cache_key(kwargs['pk']))
+            cache.delete(self.get_cache_key())
+            return Response({
+                'status': 'success',
+                'data': None
+            }, status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'deletion_error',
+                    'message': str(e)
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'])
+    def history(self, request):
+        queryset = self.get_queryset().order_by('-created_at')
+        page = self.paginate_queryset(queryset)
+        serializer = self.get_serializer(page, many=True)
+        return Response({
+            'status': 'success',
+            'data': serializer.data,
+            'meta': {
+                'pagination': {
+                    'page': self.paginator.page.number,
+                    'limit': self.paginator.page_size,
+                    'total': self.paginator.page.paginator.count,
+                    'totalPages': self.paginator.page.paginator.num_pages,
+                }
+            }
+        })
