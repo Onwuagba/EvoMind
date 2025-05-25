@@ -1,11 +1,28 @@
 from django.db import models
-from apps.journal.models import Journal
+from django.contrib.auth import get_user_model
+from django.contrib.postgres.fields import ArrayField
 
-# Create your models here.
+User = get_user_model()
 
 class JournalAnalysis(models.Model):
-    journal = models.OneToOneField(Journal, on_delete=models.CASCADE)
-    emotional_patterns = models.JSONField()
-    triggers = models.JSONField()
-    risk_level = models.CharField(max_length=20)
+    RISK_LEVELS = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    content = models.TextField()
+    emotional_patterns = ArrayField(models.CharField(max_length=255), blank=True)
+    trigger_identification = ArrayField(models.CharField(max_length=255), blank=True)
+    coping_suggestions = ArrayField(models.CharField(max_length=255), blank=True)
+    risk_level = models.CharField(max_length=10, choices=RISK_LEVELS)
     created_at = models.DateTimeField(auto_now_add=True)
+    analyzed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['risk_level']),
+        ]
