@@ -24,7 +24,7 @@ const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 flex items-center justify-center">
-      <Card className="w-full max-w-md border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+      <Card className="w-full max-w-md border-0 shadow-lg bg-white/90 backdrop-blur-sm">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4">
             <img 
@@ -37,12 +37,12 @@ const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
           <p className="text-slate-600">Sign in to start your wellness journey</p>
         </CardHeader>
         <CardContent className="space-y-6">
-          <p className="text-center text-sm text-slate-600 mb-2">Choose a method to sign in:</p>
+          <p className="text-center text-sm text-slate-700 mb-2">Choose a method to sign in:</p>
           
           <div className="space-y-3">
             <Button
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 h-12 border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-blue-700 font-medium"
+              className="w-full flex items-center justify-center gap-2 h-12 border-2 border-blue-300 hover:bg-blue-50 hover:border-blue-400 text-blue-700 font-medium"
               disabled={isLoading}
               onClick={() => handleSocialLogin('google')}
             >
@@ -69,7 +69,7 @@ const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
             
             <Button
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 h-12 border-2 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-700 font-medium"
+              className="w-full flex items-center justify-center gap-2 h-12 border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-slate-700 font-medium"
               disabled={isLoading}
               onClick={() => handleSocialLogin('email')}
             >
@@ -78,12 +78,12 @@ const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
             </Button>
           </div>
 
-          {/* New Mental Health Features */}
+          {/* Mental Health Features */}
           <div className="mt-8 pt-6 border-t border-slate-200">
-            <h3 className="text-center text-sm font-semibold text-slate-700 mb-4">What You'll Get:</h3>
+            <h3 className="text-center text-sm font-semibold text-slate-800 mb-4">What You'll Get:</h3>
             
             <div className="space-y-4">
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50/50">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-100">
                 <div className="p-2 rounded-full bg-blue-100">
                   <Users className="h-4 w-4 text-blue-600" />
                 </div>
@@ -93,7 +93,7 @@ const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50/50">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50 border border-emerald-100">
                 <div className="p-2 rounded-full bg-emerald-100">
                   <Bot className="h-4 w-4 text-emerald-600" />
                 </div>
