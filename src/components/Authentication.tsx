@@ -2,14 +2,13 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Github, Mail } from 'lucide-react';
+import { Mail, Users, Bot } from 'lucide-react';
 
 interface AuthenticationProps {
   onComplete: () => void;
 }
 
 const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
-  // This is a placeholder component that would be replaced by Supabase Auth
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSocialLogin = (provider: string) => {
@@ -37,23 +36,13 @@ const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
           <h1 className="text-2xl font-bold text-slate-800">Emotional Pattern Tracker</h1>
           <p className="text-slate-600">Sign in to start your wellness journey</p>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
           <p className="text-center text-sm text-slate-600 mb-2">Choose a method to sign in:</p>
           
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Button
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 h-12"
-              disabled={isLoading}
-              onClick={() => handleSocialLogin('github')}
-            >
-              <Github className="h-5 w-5" />
-              Continue with GitHub
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="w-full flex items-center justify-center gap-2 h-12"
+              className="w-full flex items-center justify-center gap-2 h-12 border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-blue-700 font-medium"
               disabled={isLoading}
               onClick={() => handleSocialLogin('google')}
             >
@@ -80,13 +69,40 @@ const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
             
             <Button
               variant="outline"
-              className="w-full flex items-center justify-center gap-2 h-12"
+              className="w-full flex items-center justify-center gap-2 h-12 border-2 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300 text-emerald-700 font-medium"
               disabled={isLoading}
               onClick={() => handleSocialLogin('email')}
             >
               <Mail className="h-5 w-5" />
               Continue with Email
             </Button>
+          </div>
+
+          {/* New Mental Health Features */}
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <h3 className="text-center text-sm font-semibold text-slate-700 mb-4">What You'll Get:</h3>
+            
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50/50">
+                <div className="p-2 rounded-full bg-blue-100">
+                  <Users className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-slate-800">Professional Support</h4>
+                  <p className="text-xs text-slate-600">Seamless connections to vetted mental health professionals</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-emerald-50/50">
+                <div className="p-2 rounded-full bg-emerald-100">
+                  <Bot className="h-4 w-4 text-emerald-600" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-slate-800">AI Companion</h4>
+                  <p className="text-xs text-slate-600">A personalised AI agent that listens to your pains and provides support</p>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div className="text-xs text-center text-slate-500 pt-4">
