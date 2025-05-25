@@ -1,12 +1,33 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState } from 'react';
+import Dashboard from '@/components/Dashboard';
+import Journal from '@/components/Journal';
+import Analytics from '@/components/Analytics';
+import Recommendations from '@/components/Recommendations';
+import BottomNav from '@/components/BottomNav';
 
 const Index = () => {
+  const [currentPage, setCurrentPage] = useState('dashboard');
+
+  const renderCurrentPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return <Dashboard onNavigate={setCurrentPage} />;
+      case 'journal':
+        return <Journal onNavigate={setCurrentPage} />;
+      case 'analytics':
+        return <Analytics onNavigate={setCurrentPage} />;
+      case 'recommendations':
+        return <Recommendations onNavigate={setCurrentPage} />;
+      default:
+        return <Dashboard onNavigate={setCurrentPage} />;
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50">
+      {renderCurrentPage()}
+      <BottomNav currentPage={currentPage} onNavigate={setCurrentPage} />
     </div>
   );
 };
