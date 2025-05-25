@@ -12,8 +12,8 @@ const BottomNav: React.FC<BottomNavProps> = ({ currentPage, onNavigate }) => {
   const navItems = [
     { id: 'dashboard', label: 'Home', icon: Home },
     { id: 'journal', label: 'Journal', icon: PenTool },
-    { id: 'companion', label: 'AI Chat', icon: MessageCircle },  // New
-    { id: 'support', label: 'Support', icon: Heart },  // New
+    { id: 'companion', label: 'AI Chat', icon: MessageCircle },
+    { id: 'support', label: 'Support', icon: Heart },
     { id: 'insights', label: 'Insights', icon: TrendingUp },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

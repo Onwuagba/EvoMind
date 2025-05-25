@@ -14,7 +14,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 // import { Companion } from '@/components/Companion';
 import { ProfessionalSupport } from '@/components/ProfessionalSupport';
-import { Companion } from './Companion';
+import { Companion } from '../components/Companion';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -70,7 +70,7 @@ const Index = () => {
         return <Journal onNavigate={setCurrentPage} />;
       case 'journal-history':
         return <JournalHistory onNavigate={setCurrentPage} />;
-      case 'analytics':
+      case 'insights':  // Changed from 'analytics' to 'insights'
         return <Analytics onNavigate={setCurrentPage} />;
       case 'companion':
         return <Companion onNavigate={setCurrentPage} />;
