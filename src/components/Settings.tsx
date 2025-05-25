@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -66,6 +65,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 pb-20">
       <div className="max-w-md mx-auto space-y-6 animate-fade-in">
+        {/* Header Section */}
         <div className="flex items-center gap-4 pt-4">
           <Button
             variant="ghost"
@@ -73,15 +73,16 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
             onClick={() => onNavigate('dashboard')}
             className="p-2"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-5 h-5 text-neutral-600" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold text-slate-800">Settings & Profile</h1>
-            <p className="text-sm text-slate-600">Customize your experience</p>
+            <h1 className="text-xl font-bold text-neutral-900">Settings & Profile</h1>
+            <p className="text-sm text-neutral-600">Customize your experience</p>
           </div>
         </div>
 
-        <Tabs defaultValue="profile" className="w-full">
+        {/* Wrap tabs components with Tabs */}
+        <Tabs defaultValue="profile">
           <TabsList className="grid grid-cols-4 mb-4">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="notifications">Alerts</TabsTrigger>
@@ -93,11 +94,11 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           <TabsContent value="profile">
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-lg">Personal Information</CardTitle>
+                <CardTitle className="text-lg text-neutral-900">Personal Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Display Name</Label>
+                  <Label className="text-neutral-900" htmlFor="name">Display Name</Label>
                   <Input
                     id="name"
                     name="name"
@@ -115,7 +116,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
                     onChange={handleProfileChange}
                     disabled
                   />
-                  <p className="text-xs text-slate-500">Email cannot be changed (managed by your social login)</p>
+                  <p className="text-xs text-neutral-500">Email cannot be changed (managed by your social login)</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="bio">About Me</Label>
@@ -136,7 +137,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
                     <Download className="w-4 h-4 mr-2" />
                     Export My Journal Data
                   </Button>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-neutral-500 mt-1">
                     Download all your journal entries and insights as a JSON file
                   </p>
                 </div>
@@ -146,7 +147,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
                   <Button variant="destructive" className="w-full" size="sm">
                     Delete My Account
                   </Button>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-neutral-500 mt-1">
                     This will permanently delete all your data
                   </p>
                 </div>
@@ -158,13 +159,13 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           <TabsContent value="notifications">
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-lg">Notification Settings</CardTitle>
+                <CardTitle className="text-lg text-neutral-900">Notification Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Journal Reminders</Label>
-                    <p className="text-xs text-slate-500">
+                    <Label className="text-neutral-900">Journal Reminders</Label>
+                    <p className="text-xs text-neutral-500">
                       Daily reminders to write in your journal
                     </p>
                   </div>
@@ -176,8 +177,8 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Weekly Insights</Label>
-                    <p className="text-xs text-slate-500">
+                    <Label className="text-neutral-900">Weekly Insights</Label>
+                    <p className="text-xs text-neutral-500">
                       Get a summary of your emotional patterns
                     </p>
                   </div>
@@ -189,8 +190,8 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Crisis Alerts</Label>
-                    <p className="text-xs text-slate-500">
+                    <Label className="text-neutral-900">Crisis Alerts</Label>
+                    <p className="text-xs text-neutral-500">
                       Important alerts when concerning patterns are detected
                     </p>
                   </div>
@@ -202,8 +203,8 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Wellness Tips</Label>
-                    <p className="text-xs text-slate-500">
+                    <Label className="text-neutral-900">Wellness Tips</Label>
+                    <p className="text-xs text-neutral-500">
                       Occasional tips to improve emotional wellbeing
                     </p>
                   </div>
@@ -220,13 +221,13 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           <TabsContent value="privacy">
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-lg">Privacy Settings</CardTitle>
+                <CardTitle className="text-lg text-neutral-900">Privacy Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>Share Anonymous Data</Label>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-neutral-500">
                       Help improve our AI by sharing anonymized data
                     </p>
                   </div>
@@ -239,7 +240,7 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>AI Analysis</Label>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-neutral-500">
                       Allow AI to analyze your entries for personalized insights
                     </p>
                   </div>
@@ -251,10 +252,10 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
 
                 <div className="pt-4 space-y-2">
                   <div className="flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-slate-500" />
-                    <h3 className="text-sm font-medium">Data Security</h3>
+                    <Lock className="w-4 h-4 text-neutral-500" />
+                    <h3 className="text-sm font-medium text-neutral-900">Data Security</h3>
                   </div>
-                  <p className="text-xs text-slate-600">
+                  <p className="text-xs text-neutral-600">
                     Your journal entries are encrypted and stored securely. We don't share your personal information with third parties.
                   </p>
                 </div>
@@ -273,27 +274,27 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
           <TabsContent value="preferences">
             <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
               <CardHeader>
-                <CardTitle className="text-lg">Application Preferences</CardTitle>
+                <CardTitle className="text-lg text-neutral-900">Application Preferences</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-slate-500" />
+                    <Globe className="w-4 h-4 text-neutral-500" />
                     <Label htmlFor="language">Language</Label>
                   </div>
                   <Select 
                     value={preferences.language}
                     onValueChange={(value) => setPreferences(prev => ({ ...prev, language: value }))}
                   >
-                    <SelectTrigger id="language">
+                    <SelectTrigger className="text-neutral-900" id="language">
                       <SelectValue placeholder="Select Language" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="english">English</SelectItem>
-                      <SelectItem value="spanish">Spanish</SelectItem>
-                      <SelectItem value="french">French</SelectItem>
-                      <SelectItem value="german">German</SelectItem>
-                      <SelectItem value="chinese">Chinese</SelectItem>
+                      <SelectItem className="text-neutral-900" value="english">English</SelectItem>
+                      <SelectItem className="text-neutral-900" value="spanish">Spanish</SelectItem>
+                      <SelectItem className="text-neutral-900" value="french">French</SelectItem>
+                      <SelectItem className="text-neutral-900" value="german">German</SelectItem>
+                      <SelectItem className="text-neutral-900" value="chinese">Chinese</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -308,14 +309,14 @@ const Settings: React.FC<SettingsProps> = ({ onNavigate }) => {
                       <SelectValue placeholder="Select Approach" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cbt">Cognitive Behavioral Therapy (CBT)</SelectItem>
-                      <SelectItem value="mindfulness">Mindfulness</SelectItem>
-                      <SelectItem value="dbt">Dialectical Behavior Therapy</SelectItem>
-                      <SelectItem value="psychodynamic">Psychodynamic</SelectItem>
-                      <SelectItem value="humanistic">Humanistic</SelectItem>
+                      <SelectItem className="text-neutral-900" value="cbt">Cognitive Behavioral Therapy (CBT)</SelectItem>
+                      <SelectItem className="text-neutral-900" value="mindfulness">Mindfulness</SelectItem>
+                      <SelectItem className="text-neutral-900" value="dbt">Dialectical Behavior Therapy</SelectItem>
+                      <SelectItem className="text-neutral-900" value="psychodynamic">Psychodynamic</SelectItem>
+                      <SelectItem className="text-neutral-900" value="humanistic">Humanistic</SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-neutral-500">
                     This helps tailor recommendations to your preferred approach
                   </p>
                 </div>

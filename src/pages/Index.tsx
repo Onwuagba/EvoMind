@@ -12,6 +12,9 @@ import Authentication from '@/components/Authentication';
 import Onboarding from '@/components/Onboarding';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+// import { Companion } from '@/components/Companion';
+import { ProfessionalSupport } from '@/components/ProfessionalSupport';
+import { Companion } from './Companion';
 
 const Index = () => {
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -69,6 +72,10 @@ const Index = () => {
         return <JournalHistory onNavigate={setCurrentPage} />;
       case 'analytics':
         return <Analytics onNavigate={setCurrentPage} />;
+      case 'companion':
+        return <Companion onNavigate={setCurrentPage} />;
+      case 'support':
+        return <ProfessionalSupport onNavigate={setCurrentPage} />;
       case 'recommendations':
         return <Recommendations onNavigate={setCurrentPage} />;
       case 'settings':

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -163,7 +162,7 @@ const JournalHistory: React.FC<JournalHistoryProps> = ({ onNavigate }) => {
             placeholder="Search your journal entries..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 border border-neutral-200 placeholder:text-slate-400 text-slate-700 bg-white focus:ring-1 focus:ring-primary focus:border-primary transition-colors duration-200"
           />
         </div>
 
