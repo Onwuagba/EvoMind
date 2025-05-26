@@ -13,6 +13,7 @@ from .services.auth_service import AuthenticationService
 
 class RegisterView(APIView):
     permission_classes = (AllowAny,)
+    http_method_names = ['post']
 
     @swagger_auto_schema(request_body=RegisterSerializer)
     def post(self, request):
@@ -31,6 +32,7 @@ class RegisterView(APIView):
 
 class LoginView(APIView):
     permission_classes = (AllowAny,)
+    http_method_names = ['post']
 
     @swagger_auto_schema(request_body=LoginSerializer)
     def post(self, request):
@@ -55,6 +57,7 @@ class LoginView(APIView):
         }, status=status.HTTP_400_BAD_REQUEST)
 
 class LogoutView(APIView):
+    http_method_names = ['post']
     @swagger_auto_schema(request_body=TokenRefreshSerializer)
     def post(self, request):
         refresh_token = request.data.get('refresh')
@@ -67,6 +70,7 @@ class LogoutView(APIView):
 
 class TokenRefreshView(APIView):
     permission_classes = (AllowAny,)
+    http_method_names = ['post']
 
     @swagger_auto_schema(request_body=TokenRefreshSerializer)
     def post(self, request):

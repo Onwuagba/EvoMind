@@ -25,6 +25,7 @@ class AnalysisViewSet(viewsets.ViewSet):
 class JournalAnalysisView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [AIAnalysisThrottle]
+    http_method_names = ['post']
 
     @swagger_auto_schema(
         request_body=JournalAnalysisRequestSerializer,
@@ -86,6 +87,7 @@ class JournalAnalysisView(APIView):
 class TraumaPatternView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [AIAnalysisThrottle]
+    http_method_names = ['post']
 
     @swagger_auto_schema(
         request_body=TraumaEventSerializer,

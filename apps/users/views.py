@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserProfileThrottle]
+    http_method_names = ['get', 'put']
 
     @swagger_auto_schema(responses={200: UserProfileSerializer()})
     def get(self, request):
@@ -83,6 +84,7 @@ class UserProfileView(APIView):
 class UserSettingsView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserProfileThrottle]
+    http_method_names = ['get', 'put']
 
     @swagger_auto_schema(responses={200: UserSettingsSerializer()})
     def get(self, request):
@@ -152,6 +154,7 @@ class UserSettingsView(APIView):
 class OnboardingView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserProfileThrottle]
+    http_method_names = ['post', 'get']
 
     @swagger_auto_schema(request_body=OnboardingSerializer)
     def post(self, request):

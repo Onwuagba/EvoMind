@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 class ProgressOverviewView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ProgressThrottle]
+    http_method_names = ['get']
 
     @swagger_auto_schema(responses={200: ProgressOverviewSerializer()})
     def get(self, request):
@@ -64,6 +65,7 @@ class MilestoneView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ProgressThrottle]
     pagination_class = MilestonePagination
+    http_method_names = ['get']
 
     @swagger_auto_schema(
         operation_description="""
@@ -106,6 +108,7 @@ class MilestoneView(APIView):
 class ProgressUpdateView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ProgressThrottle]
+    http_method_names = ['post']
 
     @swagger_auto_schema(
         request_body=ProgressUpdateRequestSerializer,

@@ -18,6 +18,7 @@ class CrisisResourceView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [CrisisThrottle]
     pagination_class = CrisisResourcePagination
+    http_method_names = ['get']
 
     @swagger_auto_schema(responses={200: CrisisResourceSerializer(many=True)})
     def get(self, request):
@@ -63,6 +64,7 @@ class CrisisResourceView(APIView):
 class CrisisAlertView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [CrisisThrottle]
+    http_method_names = ['post']
 
     @swagger_auto_schema(request_body=CrisisAlertSerializer)
     def post(self, request):
@@ -95,6 +97,7 @@ class CrisisAlertView(APIView):
 class HotlineView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [HotlineThrottle]
+    http_method_names = ['get']
 
     @swagger_auto_schema(responses={200: HotlineSerializer(many=True)})
     def get(self, request):
