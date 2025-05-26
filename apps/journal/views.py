@@ -5,8 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.cache import cache
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
 from django.conf import settings
-from journal.models import Journal
-from journal.serializers import JournalSerializer 
+from apps.journal.models import Journal
+from apps.journal.serializers import JournalSerializer 
 from .pagination import JournalPagination
 from .throttling import JournalRateThrottle
 
@@ -19,6 +19,10 @@ class JournalViewSet(viewsets.ModelViewSet):
     throttle_classes = [JournalRateThrottle]
 
     def get_queryset(self):
+        # Check if this is a schema generation request
+        if getattr(self, 'swagger_fake_view', False):
+            return Journal.objects.none()
+        
         return Journal.objects.filter(
             user=self.request.user,
             is_deleted=False

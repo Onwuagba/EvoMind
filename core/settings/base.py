@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'apps.therapists',
     'apps.users',
     'apps.notifications',
+    'apps.progress',
     'apps.export',
 ]
 
@@ -120,6 +121,8 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+AUTH_USER_MODEL = 'authentication.User'
 
 # Swagger settings
 SWAGGER_SETTINGS = {

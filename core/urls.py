@@ -35,8 +35,17 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/v1/', include('apps.journal.urls')),
-    path('api/v1/', include('apps.authentication.urls')),
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0)),
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0)),
+    path('api/v1/', include([
+        path('', include('apps.authentication.urls')),
+        path('', include('apps.journal.urls')),
+        path('', include('apps.analysis.urls')),
+        path('', include('apps.crisis.urls')),
+        path('', include('apps.therapists.urls')),
+        path('', include('apps.notifications.urls')),
+        path('', include('apps.export.urls')),
+        path('', include('apps.progress.urls')),
+        path('', include('apps.users.urls')),
+    ])),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]

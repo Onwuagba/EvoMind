@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 
-from backend.apps.journal.models import Journal
+from apps.journal.models import Journal
 from .models import UserMilestone, ProgressOverview
 from .serializers import (
     MilestoneSerializer,
