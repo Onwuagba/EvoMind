@@ -14,3 +14,4 @@ celerybeat-schedule.dir
 logs/**
 notes.txt
 .env.prod
+/logs/
