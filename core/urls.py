@@ -40,7 +40,6 @@ urlpatterns = [
         path('', include('apps.journal.urls')),
         path('', include('apps.analysis.urls')),
         path('', include('apps.crisis.urls')),
-        path('', include('apps.therapists.urls')),
         path('', include('apps.notifications.urls')),
         path('', include('apps.export.urls')),
         path('', include('apps.progress.urls')),
