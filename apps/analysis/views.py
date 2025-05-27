@@ -1,3 +1,4 @@
+import asyncio
 from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -31,7 +32,7 @@ class JournalAnalysisView(APIView):
         request_body=JournalAnalysisRequestSerializer,
         responses={200: JournalAnalysisResponseSerializer}
     )
-    async def post(self, request):
+    def post(self, request):
         """
         Analyze journal content and return emotional patterns, triggers, and suggestions.
 
@@ -51,28 +52,34 @@ class JournalAnalysisView(APIView):
         """
         serializer = JournalAnalysisRequestSerializer(data=request.data)
         
+        if not serializer.is_valid():
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'validation_error',
+                    'message': 'Invalid data',
+                    'details': serializer.errors
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            serializer.is_valid(raise_exception=True)
             service = AIAnalysisService()
-            analysis = await service.analyze_journal(
-                request.user,
-                serializer.validated_data['content']
-            )
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                analysis = loop.run_until_complete(
+                    service.analyze_journal(
+                        request.user,
+                        serializer.validated_data['content']
+                    )
+                )
+            finally:
+                loop.close()
 
             return Response({
                 'status': 'success',
                 'data': analysis
             })
-
-        except ValidationError as e:
-            return Response({
-                'status': 'error',
-                'error': {
-                    'code': 'validation_error',
-                    'message': str(e),
-                    'details': serializer.errors
-                }
-            }, status=status.HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             return Response({
@@ -84,6 +91,7 @@ class JournalAnalysisView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
 class TraumaPatternView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [AIAnalysisThrottle]
@@ -93,7 +101,7 @@ class TraumaPatternView(APIView):
         request_body=TraumaEventSerializer,
         responses={200: JournalAnalysisResponseSerializer}
     )
-    async def post(self, request):
+    def post(self, request):
         """
         Analyze trauma pattern and return emotional patterns, risk level, and suggestions.
 
@@ -112,9 +120,12 @@ class TraumaPatternView(APIView):
         try:
             serializer.is_valid(raise_exception=True)
             service = AIAnalysisService()
-            analysis = await service.analyze_trauma_pattern(
-                request.user,
-                serializer.validated_data
+            
+            analysis = asyncio.run(
+                service.analyze_trauma_pattern(
+                    request.user,
+                    serializer.validated_data
+                )
             )
 
             return Response({
@@ -127,8 +138,8 @@ class TraumaPatternView(APIView):
                 'status': 'error',
                 'error': {
                     'code': 'validation_error',
-                    'message': str(e),
-                    'details': serializer.errors
+                    'message': 'Invalid data provided',
+                    'details': serializer.errors if hasattr(serializer, 'errors') else str(e)
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
 

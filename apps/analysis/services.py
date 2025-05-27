@@ -3,15 +3,14 @@ from django.core.cache import cache
 from django.conf import settings
 import logging
 import json
-import openai
+from openai import AsyncOpenAI
 from .models import JournalAnalysis
 
 logger = logging.getLogger(__name__)
 
 class AIAnalysisService:
     def __init__(self):
-        self.openai = openai
-        self.openai.api_key = settings.OPENAI_API_KEY
+        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
     async def analyze_journal(self, user, content: str) -> Dict[str, Any]:
         """
@@ -32,7 +31,7 @@ class AIAnalysisService:
 
         try:
             # First API call - Get the structured analysis
-            completion = await self.openai.ChatCompletion.acreate(
+            completion = await self.client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {
@@ -52,10 +51,10 @@ class AIAnalysisService:
                 max_tokens=500
             )
             
-            analysis = self._process_ai_response(completion.choices[0].message['content'])
+            analysis = self._process_ai_response(completion.choices[0].message.content)
             
             # Save to database
-            JournalAnalysis.objects.create(
+            await JournalAnalysis.objects.acreate(
                 user=user,
                 content=content,
                 **analysis
@@ -133,4 +132,85 @@ class AIAnalysisService:
         except Exception as e:
             logger.error(f"Error processing AI response: {e}")
             logger.error(f"Raw AI response: {ai_response}")
+            raise
+
+    def _serialize_data_for_cache(self, data: Dict[str, Any]) -> str:
+        """Serialize data for cache key, handling dates and complex types"""
+        serializable_data = data.copy()
+        
+        # Handle date objects
+        if 'date' in serializable_data:
+            serializable_data['date'] = serializable_data['date'].isoformat()
+        
+        return json.dumps(serializable_data, sort_keys=True)
+
+    async def analyze_trauma_pattern(self, user, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Analyzes trauma patterns using OpenAI's GPT-4.
+        
+        Args:
+            user: The user submitting the trauma event
+            data: Dictionary containing trauma event details
+            
+        Returns:
+            Dict containing analysis of trauma patterns and recommendations
+        """
+        # Use helper method to create cache key
+        cache_key = f"trauma_analysis_{user.id}_{hash(self._serialize_data_for_cache(data))}"
+        cached_result = cache.get(cache_key)
+        
+        if cached_result:
+            return cached_result
+
+        try:
+            # Format the trauma event data for analysis
+            event_description = (
+                f"Event Type: {data.get('event_type', 'Not specified')}\n"
+                f"Impact Level: {data.get('impact_level', 'Not specified')}\n"
+                f"Description: {data.get('description', '')}\n"
+                f"Triggers: {', '.join(data.get('triggers', []))}\n"
+                f"Coping Methods: {', '.join(data.get('coping_methods', []))}"
+            )
+
+            completion = await self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": """You are a trauma-informed AI analyst. Analyze the trauma event 
+                        and return only valid JSON with the following structure:
+                        {
+                            "pattern_identification": {
+                                "triggers": ["trigger1", "trigger2"],
+                                "emotional_responses": ["response1", "response2"],
+                                "behavioral_patterns": ["pattern1", "pattern2"]
+                            },
+                            "risk_assessment": {
+                                "level": "low|medium|high",
+                                "factors": ["factor1", "factor2"]
+                            },
+                            "recommendations": {
+                                "coping_strategies": ["strategy1", "strategy2"],
+                                "support_resources": ["resource1", "resource2"],
+                                "professional_help": boolean
+                            },
+                            "summary": "brief analysis summary"
+                        }"""
+                    },
+                    {"role": "user", "content": event_description}
+                ],
+                temperature=0.7,
+                max_tokens=800
+            )
+
+            # Parse the response
+            analysis = json.loads(completion.choices[0].message.content)
+            
+            # Cache the result
+            cache.set(cache_key, analysis, timeout=3600)  # Cache for 1 hour
+
+            return analysis
+
+        except Exception as e:
+            logger.error(f"Trauma pattern analysis error: {str(e)}")
             raise

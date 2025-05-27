@@ -113,6 +113,8 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') or ''
+
 # JWT Settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
