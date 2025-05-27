@@ -114,6 +114,7 @@ REST_FRAMEWORK = {
 }
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 
 # JWT Settings
 SIMPLE_JWT = {

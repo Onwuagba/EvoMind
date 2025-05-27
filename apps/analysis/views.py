@@ -13,7 +13,7 @@ from .serializers import (
     JournalAnalysisResponseSerializer,
     TraumaEventSerializer
 )
-from .services import AIAnalysisService
+from .services import AIAnalysisService, GeminiService
 from .throttling import AIAnalysisThrottle
 
 class AnalysisViewSet(viewsets.ViewSet):
@@ -63,7 +63,8 @@ class JournalAnalysisView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            service = AIAnalysisService()
+            # service = AIAnalysisService()
+            service = GeminiService()
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
