@@ -113,7 +113,7 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 10,
 }
 
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY') or ''
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # JWT Settings
 SIMPLE_JWT = {
