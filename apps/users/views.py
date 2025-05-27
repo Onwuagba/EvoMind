@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [UserProfileThrottle]
-    http_method_names = ['get', 'put']
+    http_method_names = ['get', 'put', 'post']
 
     @swagger_auto_schema(responses={200: UserProfileSerializer()})
     def get(self, request):
@@ -76,6 +76,54 @@ class UserProfileView(APIView):
                 'error': {
                     'code': 'profile_update_error',
                     'message': 'Failed to update user profile',
+                    'details': str(e)
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @swagger_auto_schema(request_body=UserProfileSerializer)
+    def post(self, request):
+        """Create a new user profile"""
+        try:
+            # Check if profile already exists
+            if UserProfile.objects.filter(user=request.user).exists():
+                return Response({
+                    'status': 'error',
+                    'error': {
+                        'code': 'profile_exists',
+                        'message': 'User profile already exists',
+                    }
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Create new profile
+            serializer = UserProfileSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save(user=request.user)
+                
+                response_data = {
+                    'status': 'success',
+                    'data': serializer.data
+                }
+                
+                # Cache the new profile
+                cache.set(f'user_profile_{request.user.id}', response_data, timeout=3600)
+                return Response(response_data, status=status.HTTP_201_CREATED)
+            
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'validation_error',
+                    'message': 'Invalid profile data',
+                    'details': serializer.errors
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            logger.error(f"Error creating user profile: {str(e)}")
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'profile_creation_error',
+                    'message': 'Failed to create user profile',
                     'details': str(e)
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
