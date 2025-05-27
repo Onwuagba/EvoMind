@@ -61,6 +61,7 @@ class JournalViewSet(viewsets.ModelViewSet):
         return Response(response_data)
 
     def create(self, request, *args, **kwargs):
+        request.data['user'] = request.user.id
         serializer = self.get_serializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
@@ -74,7 +75,7 @@ class JournalViewSet(viewsets.ModelViewSet):
                 'status': 'error',
                 'error': {
                     'code': 'validation_error',
-                    'message': str(e),
+                    'message': str(e.args[0]),
                     'details': serializer.errors
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
@@ -123,6 +124,43 @@ class JournalViewSet(viewsets.ModelViewSet):
                     'message': str(e)
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            # Add user ID to request data
+            request.data['user'] = request.user.id
+            serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            # Clear the cache
+            cache.delete(self.get_cache_key(kwargs['pk']))
+            cache.delete(self.get_cache_key())
+
+            return Response({
+                'status': 'success',
+                'data': serializer.data
+            })
+
+        except Exception as e:
+            if hasattr(self, 'serializer'):
+                return Response({
+                    'status': 'error',
+                    'error': {
+                        'code': 'journal_update_error',
+                        'message': str(e),
+                        'details': self.serializer.errors if hasattr(self.serializer, 'errors') else None
+                    }
+                }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({
+                    'status': 'error',
+                    'error': {
+                        'code': 'journal_update_error',
+                        'message': str(e)
+                    }
+                }, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def history(self, request):
