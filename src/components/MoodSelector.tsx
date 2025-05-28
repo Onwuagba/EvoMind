@@ -12,8 +12,7 @@ interface MoodSelectorProps {
 const MoodSelector: React.FC<MoodSelectorProps> = ({
   selectedMood,
   onMoodSelect,
-  size = 'small',
-  label = 'How are you feeling?'
+  size = 'small'
 }) => {
   const moods = [
     { value: 1, emoji: '😢', label: 'Very Sad', color: 'bg-red-100 text-red-600 border-red-200' },
@@ -27,7 +26,6 @@ const MoodSelector: React.FC<MoodSelectorProps> = ({
 
   return (
     <div className="space-y-4">
-      <p className="text-center text-slate-700 font-medium">{label}</p>
       <div className="flex justify-center gap-2">
         {moods.map((mood) => (
           <Button

@@ -32,7 +32,7 @@ const Authentication: React.FC<AuthenticationProps> = ({ onComplete }) => {
             </div>
           </div>
           <h1 className="text-3xl font-semibold text-slate-800 mb-3 leading-tight">
-            Emotional Pattern Tracker
+            EvoMind
           </h1>
           <p className="text-lg text-slate-600 leading-relaxed">
             Sign in to start your wellness journey
