@@ -43,9 +43,18 @@ class LoginView(APIView):
                 serializer.validated_data['password']
             )
             if tokens:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                try:
+                    user = User.objects.get(email=serializer.validated_data['email'])
+                    first_name = user.first_name
+                except User.DoesNotExist:
+                    first_name = ""
+                data = tokens.copy()
+                data['first_name'] = first_name
                 return Response({
                     'status': 'success',
-                    'data': tokens
+                    'data': data,
                 })
             return Response({
                 'status': 'error',
