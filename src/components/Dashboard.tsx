@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,10 +9,23 @@ interface DashboardProps {
   onNavigate: (page: string) => void;
 }
 
+function toTitleCase(str: string) {
+  return str.replace(/\w\S*/g, (txt) =>
+    txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()
+  );
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const [userName] = useState('Alex');
+  const [userName, setUserName] = useState('User');
   const [streak, setStreak] = useState(7);
   const [todayMood, setTodayMood] = useState<number | null>(null);
+
+  useEffect(() => {
+    const storedName = localStorage.getItem('firstName');
+    if (storedName) {
+      setUserName(toTitleCase(storedName));
+    }
+  }, []);
 
   // Sample data for the mini chart
   const weeklyData = [
@@ -80,9 +92,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <PenTool className="w-6 h-6" />
             <span className="text-sm font-medium">Write Entry</span>
           </Button>
-          
+
           <Button
-            onClick={() => onNavigate('analytics')}
+            onClick={() => onNavigate('insights')}
             variant="outline"
             className="h-24 flex flex-col gap-2 border-2 border-emerald-200 hover:bg-emerald-50 text-emerald-700 shadow-lg rounded-xl transition-all duration-300 hover:scale-105"
           >
