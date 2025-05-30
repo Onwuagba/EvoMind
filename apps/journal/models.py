@@ -7,10 +7,15 @@ User = get_user_model()
 class Journal(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='journals')
     content = models.TextField()
-    mood_score = models.IntegerField(
-        null=True, 
-        blank=True,
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
+    before_mood = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
+        blank=True
+    )
+    after_mood = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        null=True,
+        blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

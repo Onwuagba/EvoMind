@@ -281,8 +281,8 @@ class DashboardView(APIView):
     # Add this achievement dictionary as a class variable
     STREAK_ACHIEVEMENTS = {
         1: {
-            'title': 'Getting Started!',
-            'description': 'first day of journaling'
+            'title': 'Great Job!',
+            'description': 'Your first day of journaling'
         },
         3: {
             'title': 'Keep it going!',
