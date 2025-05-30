@@ -4,10 +4,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
+from apps.journal.models import DailyMood, Journal
 from .serializers import UserProfileSerializer, UserSettingsSerializer, OnboardingSerializer
 from .models import UserProfile, OnboardingStatus
 from .throttling import UserProfileThrottle
 import logging
+from django.utils import timezone
+from datetime import timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +220,6 @@ class OnboardingView(APIView):
             if serializer.is_valid():
                 # If all steps are completed, update completed_at
                 if request.data.get('completed', False):
-                    from django.utils import timezone
                     serializer.validated_data['completed_at'] = timezone.now()
                 
                 onboarding = serializer.save()
@@ -267,6 +269,154 @@ class OnboardingView(APIView):
                 'error': {
                     'code': 'onboarding_fetch_error',
                     'message': 'Failed to fetch onboarding status',
+                    'details': str(e)
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+    http_method_names = ['get']
+
+    # Add this achievement dictionary as a class variable
+    STREAK_ACHIEVEMENTS = {
+        1: {
+            'title': 'Getting Started!',
+            'description': 'first day of journaling'
+        },
+        3: {
+            'title': 'Keep it going!',
+            'description': '3 days of consistent journaling'
+        },
+        7: {
+            'title': 'Week Warrior!',
+            'description': '7 days of consistent journaling'
+        },
+        14: {
+            'title': 'Two Week Triumph!',
+            'description': '14 days of dedicated self-reflection'
+        },
+        21: {
+            'title': 'Habit Builder!',
+            'description': '21 days of making journaling a habit'
+        },
+        30: {
+            'title': 'Monthly Master!',
+            'description': 'A full month of consistent journaling'
+        },
+        60: {
+            'title': 'Journaling Journey!',
+            'description': '60 days of incredible dedication'
+        },
+        90: {
+            'title': 'Quarterly Champion!',
+            'description': '90 days of remarkable consistency'
+        },
+        180: {
+            'title': 'Half Year Hero!',
+            'description': '180 days of amazing commitment'
+        },
+        365: {
+            'title': 'Year of Growth!',
+            'description': 'A full year of self-discovery'
+        }
+    }
+
+    def get_achievement(self, streak_days):
+        # Find the highest achieved streak milestone
+        achieved_days = sorted(
+            [days for days in self.STREAK_ACHIEVEMENTS.keys() if days <= streak_days],
+            reverse=True
+        )
+        
+        if achieved_days:
+            achievement = self.STREAK_ACHIEVEMENTS[achieved_days[0]]
+            return achievement['title'], achievement['description']
+        return None, None
+
+    def get(self, request):
+        try:
+            # Get today's date
+            today = timezone.now().date()
+            user = request.user
+
+            # Get today's mood check-in if exists
+            try:
+                today_mood = DailyMood.objects.get(
+                    user=user,
+                    date=today
+                )
+                today_mood_value = today_mood.mood
+            except DailyMood.DoesNotExist:
+                today_mood_value = None
+
+            # Get weekly mood trend (last 7 days)
+            week_ago = today - timedelta(days=6)
+            weekly_moods = DailyMood.objects.filter(
+                user=user,
+                date__range=[week_ago, today]
+            ).order_by('date')
+
+            weekly_trend = []
+            for single_date in (week_ago + timedelta(n) for n in range(7)):
+                mood = weekly_moods.filter(date=single_date).first()
+                weekly_trend.append({
+                    'day': single_date.strftime('%a'),
+                    'mood': mood.mood if mood else None
+                })
+
+            # Get journaling streak
+            from django.db.models import Count
+            from django.db.models.functions import TruncDate
+
+            journal_entries = Journal.objects.filter(
+                user=user
+            ).annotate(
+                date=TruncDate('created_at')
+            ).values('date').distinct()
+
+            consecutive_days = 0
+            check_date = today
+            while journal_entries.filter(date=check_date).exists():
+                consecutive_days += 1
+                check_date = check_date - timedelta(days=1)
+
+            achievement_title, achievement_description = self.get_achievement(consecutive_days)
+            response_data = {
+                'status': 'success',
+                'data': {
+                    'user': {
+                        'firstName': user.first_name,
+                        'onboardingComplete': getattr(user, 'onboarding_complete', False)
+                    },
+                    'todayMood': today_mood_value,
+                    'streak': {
+                        'count': consecutive_days,
+                        'achievement': achievement_title,
+                        'description': achievement_description,
+                        'nextMilestone': next(
+                            (days for days in sorted(self.STREAK_ACHIEVEMENTS.keys()) 
+                             if days > consecutive_days),
+                            None
+                        )
+                    },
+                    'weeklyTrend': weekly_trend,
+                    'stats': {
+                        'journalCount': journal_entries.count(),
+                        'moodCheckIns': DailyMood.objects.filter(user=user).count()
+                    }
+                }
+            }
+
+            return Response(response_data)
+
+        except Exception as e:
+            logger.error(f"Error fetching dashboard data: {str(e)}")
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'dashboard_fetch_error',
+                    'message': 'Failed to fetch dashboard data',
                     'details': str(e)
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

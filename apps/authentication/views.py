@@ -47,14 +47,22 @@ class LoginView(APIView):
                 User = get_user_model()
                 try:
                     user = User.objects.get(email=serializer.validated_data['email'])
-                    first_name = user.first_name
+                    user_data = {
+                        'id': str(user.id),
+                        'email': user.email,
+                        'firstName': user.first_name,
+                        'onboardingComplete': getattr(user, 'onboarding_complete', False)
+                    }
                 except User.DoesNotExist:
-                    first_name = ""
-                data = tokens.copy()
-                data['first_name'] = first_name
+                    user_data = {}
+
                 return Response({
                     'status': 'success',
-                    'data': data,
+                    'data': {
+                        'access': tokens['access'],
+                        'refresh': tokens['refresh'],
+                        'user': user_data
+                    }
                 })
             return Response({
                 'status': 'error',
