@@ -1,14 +1,18 @@
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from django.core.cache import cache
 from django.core.cache.backends.base import DEFAULT_TIMEOUT
 from django.conf import settings
+from datetime import timedelta, date
 from apps.journal.models import Journal
 from apps.journal.serializers import JournalSerializer 
 from .pagination import JournalPagination
 from .throttling import JournalRateThrottle
+from .models import DailyMood
+from .serializers import DailyMoodSerializer
 
 CACHE_TTL = getattr(settings, 'CACHE_TTL', DEFAULT_TIMEOUT)
 
@@ -179,3 +183,32 @@ class JournalViewSet(viewsets.ModelViewSet):
                 }
             }
         })
+
+class SaveMoodView(generics.CreateAPIView):
+    serializer_class = DailyMoodSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        obj, created = DailyMood.objects.update_or_create(
+            user=self.request.user,
+            date=date.today(),
+            defaults={'mood': self.request.data.get('mood')}
+        )
+        return obj
+
+    def post(self, request, *args, **kwargs):
+        self.perform_create(self.get_serializer(data=request.data))
+        return Response({'status': 'success'})
+
+class WeeklyMoodView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        today = date.today()
+        week_ago = today - timedelta(days=6)
+        moods = DailyMood.objects.filter(user=request.user, date__range=[week_ago, today]).order_by('date')
+        data = [
+            {'date': m.date, 'mood': m.mood}
+            for m in moods
+        ]
+        return Response({'status': 'success', 'data': data})

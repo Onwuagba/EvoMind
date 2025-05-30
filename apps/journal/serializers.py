@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Journal
+from .models import Journal, DailyMood
 
 class JournalSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,6 +13,12 @@ class JournalSerializer(serializers.ModelSerializer):
         return value.strip()
 
     def validate_mood_score(self, value):
-        if value and not (1 <= value <= 10):
-            raise serializers.ValidationError("Mood score must be between 1 and 10")
+        if value and not (1 <= value <= 5):
+            raise serializers.ValidationError("Mood score must be between 1 and 5")
         return value
+
+class DailyMoodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DailyMood
+        fields = ['id', 'user', 'mood', 'date']
+        read_only_fields = ['id', 'user', 'date']

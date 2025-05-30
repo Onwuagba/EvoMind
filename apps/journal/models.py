@@ -22,3 +22,15 @@ class Journal(models.Model):
             models.Index(fields=['user', '-created_at']),
             models.Index(fields=['user', 'is_deleted']),
         ]
+
+class DailyMood(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='daily_moods')
+    mood = models.IntegerField()  # e.g., 1-5 scale
+    date = models.DateField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'date')
+        ordering = ['-date']
+
+    def __str__(self):
+        return f"{self.user.email} - {self.mood} on {self.date}"
