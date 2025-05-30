@@ -197,8 +197,16 @@ class SaveMoodView(generics.CreateAPIView):
         return obj
 
     def post(self, request, *args, **kwargs):
-        self.perform_create(self.get_serializer(data=request.data))
-        return Response({'status': 'success'})
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        obj = self.perform_create(serializer)
+        # Return the created/updated mood using the serializer
+        mood_instance = DailyMood.objects.get(user=request.user, date=date.today())
+        data = DailyMoodSerializer(mood_instance).data
+        return Response({
+            'status': 'success',
+            'data': data
+        }, status=status.HTTP_201_CREATED)
 
 class WeeklyMoodView(APIView):
     permission_classes = [IsAuthenticated]
@@ -207,8 +215,15 @@ class WeeklyMoodView(APIView):
         today = date.today()
         week_ago = today - timedelta(days=6)
         moods = DailyMood.objects.filter(user=request.user, date__range=[week_ago, today]).order_by('date')
-        data = [
-            {'date': m.date, 'mood': m.mood}
-            for m in moods
-        ]
-        return Response({'status': 'success', 'data': data})
+        serializer = DailyMoodSerializer(moods, many=True)
+        return Response({
+            'status': 'success',
+            'data': serializer.data,
+            'meta': {
+                'range': {
+                    'from': str(week_ago),
+                    'to': str(today),
+                    'count': moods.count()
+                }
+            }
+        })
