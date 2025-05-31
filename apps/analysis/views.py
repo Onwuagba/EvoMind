@@ -221,7 +221,7 @@ class TraumaPatternView(APIView):
 
         try:
             serializer.is_valid(raise_exception=True)
-            service = AIAnalysisService()
+            service = GeminiService()
 
             analysis = asyncio.run(
                 service.analyze_trauma_pattern(

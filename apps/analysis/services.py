@@ -337,6 +337,13 @@ class GeminiService:
     async def analyze_trauma_pattern(self, user, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analyzes trauma patterns using Google's Gemini Pro.
+
+        Args:
+            user: The user submitting the pattern
+            data: Dictionary containing:
+                - description: str
+                - intensity: int (1-10)
+                - triggers: List[str]
         """
         cache_key = f"gemini_trauma_analysis_{user.id}_{hash(self._serialize_data_for_cache(data))}"
         cached_result = cache.get(cache_key)
@@ -345,17 +352,21 @@ class GeminiService:
             return cached_result
 
         try:
+            # Ensure between 1-10
+            intensity = min(max(int(data.get('intensity', 1)), 1), 10)
             event_description = (
-                f"Event Type: {data.get('event_type', 'Not specified')}\n"
-                f"Impact Level: {data.get('impact_level', 'Not specified')}\n"
                 f"Description: {data.get('description', '')}\n"
-                f"Triggers: {', '.join(data.get('triggers', []))}\n"
-                f"Coping Methods: {', '.join(data.get('coping_methods', []))}"
+                f"Intensity Level: {intensity}/10\n"
+                f"Identified Triggers: {', '.join(data.get('triggers', []))}"
             )
+            logger.info(
+                f"Analyzing trauma pattern with intensity {intensity}/10...")
 
             prompt = f"""
-            You are a trauma-informed AI analyst. Analyze this trauma event and return only valid JSON.
+            You are a trauma-informed AI analyst. Analyze this trauma pattern and return only valid JSON.
             Event details: {event_description}
+            
+            Based on the intensity level ({intensity}/10) and description, provide a detailed analysis.
             
             Required JSON structure:
             {{
@@ -365,26 +376,49 @@ class GeminiService:
                     "behavioral_patterns": ["pattern1", "pattern2"]
                 }},
                 "risk_assessment": {{
-                    "level": "low|medium|high",
-                    "factors": ["factor1", "factor2"]
+                    "level": "{'high' if intensity > 7 else 'medium' if intensity > 4 else 'low'}",
+                    "factors": ["factor1", "factor2"],
+                    "intensity_interpretation": "Brief interpretation of the {intensity}/10 intensity"
                 }},
                 "recommendations": {{
                     "coping_strategies": ["strategy1", "strategy2"],
                     "support_resources": ["resource1", "resource2"],
-                    "professional_help": boolean
+                    "professional_help": {str(intensity > 7).lower()},
+                    "immediate_actions": ["action1", "action2"]
                 }},
-                "summary": "brief analysis summary"
+                "summary": "Brief analysis summary focusing on intensity and triggers"
             }}
             
-            Return only the JSON, no other text.
-            """
+            Return only the JSON, no other text."""
 
-            response = await sync_to_async(self.model.generate_content)(prompt)
-            analysis = json.loads(response.text)
+            # Make the API call async-safe
+            generate_content = partial(
+                self.model.generate_content, prompt)
+            response = await sync_to_async(generate_content)()
 
-            cache.set(cache_key, analysis, timeout=3600)
+            # Clean up the response
+            cleaned_response = response.text.strip()
+            if cleaned_response.startswith("```json"):
+                cleaned_response = cleaned_response[7:]
+            if cleaned_response.startswith("```"):
+                cleaned_response = cleaned_response[3:]
+            if cleaned_response.endswith("```"):
+                cleaned_response = cleaned_response[:-3]
+
+            # Parse JSON
+            analysis = json.loads(cleaned_response.strip())
+
+            # Cache the result
+            cache_key = f"gemini_trauma_analysis_{user.id}_{hash(self._serialize_data_for_cache(data))}"
+            await sync_to_async(cache.set)(cache_key, analysis, timeout=3600)
+
             return analysis
 
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse Gemini response: {str(e)}")
+            logger.error(
+                f"Raw response: {response.text if 'response' in locals() else 'No response'}")
+            raise
         except Exception as e:
             logger.error(
                 f"Gemini trauma pattern analysis error: {str(e)}")

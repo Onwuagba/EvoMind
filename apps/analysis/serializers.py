@@ -11,7 +11,7 @@ class JournalAnalysisResponseSerializer(serializers.ModelSerializer):
                  'coping_suggestions', 'risk_level', 'analysis_summary', 'analyzed_at']
 
 class TraumaEventSerializer(serializers.Serializer):
-    date = serializers.DateField()
+    # date = serializers.DateField()
     description = serializers.CharField()
     intensity = serializers.IntegerField(min_value=1, max_value=10)
     triggers = serializers.ListField(child=serializers.CharField())
