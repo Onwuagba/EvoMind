@@ -10,9 +10,12 @@ from .models import UserProfile, OnboardingStatus
 from .throttling import UserProfileThrottle
 import logging
 from django.utils import timezone
-from datetime import timedelta
+from asgiref.sync import sync_to_async
+from datetime import timedelta, datetime
+from apps.analysis.services import AIAnalysisService, GeminiService
 
 logger = logging.getLogger(__name__)
+
 
 class UserProfileView(APIView):
     permission_classes = [IsAuthenticated]
@@ -34,7 +37,7 @@ class UserProfileView(APIView):
                 'status': 'success',
                 'data': serializer.data
             }
-            
+
             cache.set(cache_key, response_data, timeout=3600)
             return Response(response_data)
         except Exception as e:
@@ -52,17 +55,18 @@ class UserProfileView(APIView):
     def put(self, request):
         try:
             profile = UserProfile.objects.get(user=request.user)
-            serializer = UserProfileSerializer(profile, data=request.data, partial=True)
-            
+            serializer = UserProfileSerializer(
+                profile, data=request.data, partial=True)
+
             if serializer.is_valid():
                 serializer.save()
                 cache.delete(f'user_profile_{request.user.id}')
-                
+
                 return Response({
                     'status': 'success',
                     'data': serializer.data
                 })
-                
+
             return Response({
                 'status': 'error',
                 'error': {
@@ -71,7 +75,7 @@ class UserProfileView(APIView):
                     'details': serializer.errors
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
-            
+
         except Exception as e:
             logger.error(f"Error updating user profile: {str(e)}")
             return Response({
@@ -101,16 +105,17 @@ class UserProfileView(APIView):
             serializer = UserProfileSerializer(data=request.data)
             if serializer.is_valid():
                 serializer.save(user=request.user)
-                
+
                 response_data = {
                     'status': 'success',
                     'data': serializer.data
                 }
-                
+
                 # Cache the new profile
-                cache.set(f'user_profile_{request.user.id}', response_data, timeout=3600)
+                cache.set(
+                    f'user_profile_{request.user.id}', response_data, timeout=3600)
                 return Response(response_data, status=status.HTTP_201_CREATED)
-            
+
             return Response({
                 'status': 'error',
                 'error': {
@@ -152,7 +157,7 @@ class UserSettingsView(APIView):
                 'status': 'success',
                 'data': serializer.data
             }
-            
+
             cache.set(cache_key, response_data, timeout=3600)
             return Response(response_data)
         except Exception as e:
@@ -170,17 +175,18 @@ class UserSettingsView(APIView):
     def put(self, request):
         try:
             profile = UserProfile.objects.get(user=request.user)
-            serializer = UserSettingsSerializer(profile, data=request.data, partial=True)
-            
+            serializer = UserSettingsSerializer(
+                profile, data=request.data, partial=True)
+
             if serializer.is_valid():
                 serializer.save()
                 cache.delete(f'user_settings_{request.user.id}')
-                
+
                 return Response({
                     'status': 'success',
                     'data': serializer.data
                 })
-            
+
             return Response({
                 'status': 'error',
                 'error': {
@@ -189,7 +195,7 @@ class UserSettingsView(APIView):
                     'details': serializer.errors
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
-            
+
         except Exception as e:
             logger.error(f"Error updating user settings: {str(e)}")
             return Response({
@@ -214,21 +220,23 @@ class OnboardingView(APIView):
                 user=request.user,
                 defaults={'completed': False}
             )
-            
-            serializer = OnboardingSerializer(onboarding, data=request.data, partial=True)
-            
+
+            serializer = OnboardingSerializer(
+                onboarding, data=request.data, partial=True)
+
             if serializer.is_valid():
                 # If all steps are completed, update completed_at
                 if request.data.get('completed', False):
-                    serializer.validated_data['completed_at'] = timezone.now()
-                
+                    serializer.validated_data['completed_at'] = timezone.now(
+                    )
+
                 onboarding = serializer.save()
-                
+
                 return Response({
                     'status': 'success',
                     'data': OnboardingSerializer(onboarding).data
                 })
-            
+
             return Response({
                 'status': 'error',
                 'error': {
@@ -237,9 +245,10 @@ class OnboardingView(APIView):
                     'details': serializer.errors
                 }
             }, status=status.HTTP_400_BAD_REQUEST)
-            
+
         except Exception as e:
-            logger.error(f"Error updating onboarding status: {str(e)}")
+            logger.error(
+                f"Error updating onboarding status: {str(e)}")
             return Response({
                 'status': 'error',
                 'error': {
@@ -252,7 +261,8 @@ class OnboardingView(APIView):
     @swagger_auto_schema(responses={200: OnboardingSerializer()})
     def get(self, request):
         try:
-            onboarding = OnboardingStatus.objects.get(user=request.user)
+            onboarding = OnboardingStatus.objects.get(
+                user=request.user)
             return Response({
                 'status': 'success',
                 'data': OnboardingSerializer(onboarding).data
@@ -263,7 +273,8 @@ class OnboardingView(APIView):
                 'data': {'completed': False, 'steps_completed': {}, 'last_step': ''}
             })
         except Exception as e:
-            logger.error(f"Error fetching onboarding status: {str(e)}")
+            logger.error(
+                f"Error fetching onboarding status: {str(e)}")
             return Response({
                 'status': 'error',
                 'error': {
@@ -278,7 +289,6 @@ class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
     http_method_names = ['get']
 
-    # Add this achievement dictionary as a class variable
     STREAK_ACHIEVEMENTS = {
         1: {
             'title': 'Great Job!',
@@ -327,29 +337,105 @@ class DashboardView(APIView):
     }
 
     def get_achievement(self, streak_days):
-        # Find the highest achieved streak milestone
         achieved_days = sorted(
-            [days for days in self.STREAK_ACHIEVEMENTS.keys() if days <= streak_days],
+            [days for days in self.STREAK_ACHIEVEMENTS.keys() if days <=
+             streak_days],
             reverse=True
         )
-        
+
         if achieved_days and achieved_days[0] == streak_days:
             achievement = self.STREAK_ACHIEVEMENTS[achieved_days[0]]
             return achievement['title'], achievement['description']
         return None, None
 
+    def get_streak_count(self, user):
+        """Calculate journaling streak"""
+        from django.db.models.functions import TruncDate
+
+        today = timezone.now().date()
+        journal_entries = Journal.objects.filter(
+            user=user
+        ).annotate(
+            date=TruncDate('created_at')
+        ).values('date').distinct()
+
+        consecutive_days = 0
+        check_date = today
+        while journal_entries.filter(date=check_date).exists():
+            consecutive_days += 1
+            check_date = check_date - timedelta(days=1)
+
+        return consecutive_days
+
+    def get_emotional_state(self, user):
+        """Analyze user's emotional state based on recent activity"""
+        today = timezone.now().date()
+        week_ago = today - timedelta(days=7)
+
+        recent_moods = DailyMood.objects.filter(
+            user=user,
+            date__range=[week_ago, today]
+        ).values_list('mood', flat=True)
+
+        recent_journals = Journal.objects.filter(
+            user=user,
+            created_at__date__range=[week_ago, today]
+        ).values_list('content', flat=True)
+
+        return {
+            'mood_trend': list(recent_moods),
+            'journal_excerpts': list(recent_journals)
+        }
+
+    def get_daily_quote(self, user, mood_data, journal_entries):
+        """Get AI-generated quote based on previous day's context"""
+        yesterday = timezone.now().date() - timedelta(days=1)
+        cache_key = f'daily_quote_{user.id}_{yesterday.strftime("%Y-%m-%d")}'
+        cached_quote = cache.get(cache_key)
+
+        if cached_quote:
+            return cached_quote
+
+        try:
+            yesterday_mood = DailyMood.objects.filter(
+                user=user,
+                date=yesterday
+            ).first()
+
+            yesterday_journal = journal_entries.filter(
+                date=yesterday
+            ).exists()
+
+            context = {
+                'user_name': user.first_name,
+                'previous_mood': yesterday_mood.mood if yesterday_mood else None,
+                'journaled_yesterday': yesterday_journal,
+                'streak_days': self.get_streak_count(user),
+                'emotional_state': self.get_emotional_state(user)
+            }
+
+            service = GeminiService()
+            import asyncio
+            quote_data = asyncio.run(service.generate_daily_quote(context))
+
+            if quote_data:
+                cache.set(cache_key, quote_data, timeout=86400)
+
+            return quote_data
+
+        except Exception as e:
+            logger.error(f"Error generating daily quote: {str(e)}")
+            return None
+
     def get(self, request):
         try:
-            # Get today's date
             today = timezone.now().date()
             user = request.user
 
             # Get today's mood check-in if exists
             try:
                 today_mood = DailyMood.objects.get(
-                    user=user,
-                    date=today
-                )
+                    user=user, date=today)
                 today_mood_value = today_mood.mood
             except DailyMood.DoesNotExist:
                 today_mood_value = None
@@ -379,13 +465,14 @@ class DashboardView(APIView):
                 date=TruncDate('created_at')
             ).values('date').distinct()
 
-            consecutive_days = 0
-            check_date = today
-            while journal_entries.filter(date=check_date).exists():
-                consecutive_days += 1
-                check_date = check_date - timedelta(days=1)
+            consecutive_days = self.get_streak_count(user)
+            achievement_title, achievement_description = self.get_achievement(
+                consecutive_days)
 
-            achievement_title, achievement_description = self.get_achievement(consecutive_days)
+            # Get daily quote
+            daily_quote = self.get_daily_quote(
+                user, today_mood_value, journal_entries)
+
             response_data = {
                 'status': 'success',
                 'data': {
@@ -399,7 +486,7 @@ class DashboardView(APIView):
                         'achievement': achievement_title,
                         'description': achievement_description,
                         'nextMilestone': next(
-                            (days for days in sorted(self.STREAK_ACHIEVEMENTS.keys()) 
+                            (days for days in sorted(self.STREAK_ACHIEVEMENTS.keys())
                              if days > consecutive_days),
                             None
                         )
@@ -408,6 +495,11 @@ class DashboardView(APIView):
                     'stats': {
                         'journalCount': journal_entries.count(),
                         'moodCheckIns': DailyMood.objects.filter(user=user).count()
+                    },
+                    'dailyQuote': {
+                        'text': daily_quote.get('quote') if daily_quote else None,
+                        'author': daily_quote.get('author') if daily_quote else None,
+                        'context': daily_quote.get('context') if daily_quote else None
                     }
                 }
             }
