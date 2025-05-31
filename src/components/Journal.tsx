@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Save, ArrowLeft, Mic, MicOff, Shield } from 'lucide-react';
+import { Save, ArrowLeft, Mic, MicOff, Shield, Loader2, History } from 'lucide-react';
 import MoodSelector from './MoodSelector';
 import { TraumaTracking } from './TraumaTracking';
 import { ProfessionalSupport } from './ProfessionalSupport';
 import { useAIAnalysis } from '@/hooks/useAIAnalysis';
+import { createJournalEntry, analyzeJournalEntry } from '@/lib/api';
+import { useToast } from '@/components/ui/use-toast';
+import { api } from '@/lib/axios';
 
 interface JournalProps {
   onNavigate: (page: string) => void;
@@ -22,6 +25,8 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
   const [crisisSupport, setCrisisSupport] = useState(false);
   const [patterns, setPatterns] = useState<any[]>([]);
   const [recommendedExercises, setRecommendedExercises] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [entryId, setEntryId] = useState<string | null>(null); // State to store the entry ID
 
   const prompts = [
     "What's one thing that made you smile today?",
@@ -33,6 +38,7 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
 
   const [currentPrompt] = useState(prompts[Math.floor(Math.random() * prompts.length)]);
   const { analyzeEntry } = useAIAnalysis();
+  const { toast } = useToast();
 
   useEffect(() => {
     const words = entry.trim().split(/\s+/).filter(word => word.length > 0);
@@ -41,19 +47,88 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
 
   // Auto-save functionality
   useEffect(() => {
-    if (entry.length > 0) {
-      const timer = setTimeout(() => {
-        setLastSaved(new Date().toLocaleTimeString());
-        console.log('Auto-saved entry:', entry);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [entry]);
+    if (!entry || entry.length < 10) return;
 
-  const handleSave = () => {
-    setLastSaved(new Date().toLocaleTimeString());
-    console.log('Saved entry:', { entry, beforeMood, afterMood });
-    // Here you would typically save to a database
+    const timer = setTimeout(async () => {
+      try {
+        const saveData = {
+          content: entry,
+          mood_score: beforeMood
+        };
+
+        // Update existing entry if we have an ID
+        if (entryId) {
+          await api.put(`/journals/${entryId}/`, saveData);
+        } else {
+          // Create new entry and store ID
+          const response = await api.post('/journals/', saveData);
+          setEntryId(response.data.id);
+        }
+
+        setLastSaved(new Date().toLocaleTimeString());
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [entry, beforeMood, entryId]);
+
+  // Update handleSave to use the API
+  const handleSave = async () => {
+    if (!beforeMood && !afterMood) {
+      toast({
+        title: "Mood Required",
+        description: "Please select your current mood before saving",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSaving(true); // Set saving state to true
+    try {
+      // Save the journal entry
+      const journalData = await createJournalEntry({
+        content: entry,
+        mood_score: afterMood || beforeMood // Use after mood if available, else before mood
+      });
+
+      // Analyze the content
+      const analysis = await analyzeJournalEntry(entry);
+
+      // Show success message
+      toast({
+        title: "Journal Entry Saved",
+        description: "Your thoughts have been recorded successfully.",
+        duration: 3000,
+      });
+
+      // Update last saved time
+      setLastSaved(new Date().toLocaleTimeString());
+
+      // Show crisis support if risk level is high
+      if (analysis.risk_level === 'high') {
+        setCrisisSupport(true);
+      }
+
+      // Update patterns and recommendations
+      setPatterns(analysis.emotional_patterns || []);
+      setRecommendedExercises(analysis.coping_suggestions || []);
+
+      // Navigate back to dashboard after successful save
+      onNavigate('dashboard');
+
+    } catch (error) {
+      console.error('Error saving journal:', error);
+      toast({
+        title: "Error Saving Entry",
+        description: "There was a problem saving your journal entry. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsSaving(false); // Reset saving state
+    }
   };
 
   const toggleVoiceInput = () => {
@@ -66,48 +141,69 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
     }
   };
 
+  // Remove the simulated analysis since we're now using the real API
   const handleEntrySubmit = async () => {
-    const analysis = await analyzeEntry(entry);
-    
-    if (analysis.riskLevel === 'high') {
-      // Show crisis support options
-      setCrisisSupport(true);
-    }
+    try {
+      const analysis = await analyzeJournalEntry(entry);
 
-    // Update emotional patterns
-    setPatterns(prev => [...prev, analysis.emotionalPatterns]);
-    
-    // Suggest exercises based on analysis
-    setRecommendedExercises(analysis.recommendedExercises);
+      if (analysis.risk_level === 'high') {
+        setCrisisSupport(true);
+      }
+
+      setPatterns(analysis.emotional_patterns || []);
+      setRecommendedExercises(analysis.coping_suggestions || []);
+    } catch (error) {
+      console.error('Error analyzing entry:', error);
+      toast({
+        title: "Analysis Error",
+        description: "Could not analyze your entry at this time.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 pb-20">
+      {/* Change max-w-md to match other pages */}
       <div className="max-w-md mx-auto space-y-6 animate-fade-in">
-        {/* Journal Entry Card */}
-        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-          {/* Header */}
-          <div className="flex items-center gap-4 pt-4">
+        {/* Updated Header with History Button */}
+        <div className="flex items-center justify-between pt-4">
+          <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onNavigate('dashboard')}
               className="p-2"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-5 h-5 text-neutral-600" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-slate-800">Journal Entry</h1>
-              <p className="text-sm text-slate-600">
-                {new Date().toLocaleDateString('en-US', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
+              <h1 className="text-xl font-bold text-neutral-900">Journal Entry</h1>
+              <p className="text-sm text-neutral-600">
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
                 })}
               </p>
             </div>
           </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onNavigate('journal-history')}
+            className="flex items-center gap-2 bg-white/80 hover:bg-white"
+          >
+            <History className="w-4 h-4" />
+            <span>History</span>
+          </Button>
+        </div>
+
+        {/* Journal Entry Card */}
+        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
 
           {/* Before Writing Mood */}
           <CardHeader className="pb-4">
@@ -164,18 +260,29 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
           )}
 
           {/* Save Button */}
-          <Button
-            onClick={handleSave}
-            className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl shadow-lg transition-all duration-300 hover:scale-105"
-            disabled={entry.length < 10}
-          >
-            <Save className="w-5 h-5 mr-2" />
-            Save Entry
-          </Button>
+          <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm animate-slide-up">
+            <CardContent>
+              <Button
+                onClick={handleSave}
+                className="w-full h-12 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-xl shadow-lg transition-all duration-300 hover:scale-105"
+                disabled={entry.length < 10 || isSaving}
+              >
+                {isSaving ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-5 h-5 mr-2" />
+                )}
+                {isSaving ? 'Saving...' : 'Save Entry'}
+              </Button>
+            </CardContent>
+          </Card>
         </Card>
 
         {/* Trauma Tracking Section */}
-        <TraumaTracking />
+        <TraumaTracking
+          content={entry}
+          onPatternDetected={(patterns) => setPatterns(patterns)}
+        />
 
         {/* Professional Support Card */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
@@ -183,8 +290,8 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
             <CardTitle className="text-lg text-neutral-900">Need Professional Support?</CardTitle>
           </CardHeader>
           <CardContent>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => onNavigate('support')}
               className="w-full"
             >

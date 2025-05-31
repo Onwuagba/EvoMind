@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, PenTool, TrendingUp, Calendar, Award } from 'lucide-react';
+import { Heart, PenTool, TrendingUp, Calendar, Award, Loader2 } from 'lucide-react';
 import MoodSelector from './MoodSelector';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/store';
+import { getDashboardData, saveMoodEntry, type DashboardResponse } from '@/lib/api';
 
 interface DashboardProps {
   onNavigate: (page: string) => void;
@@ -15,28 +18,62 @@ function toTitleCase(str: string) {
   );
 }
 
+interface DashboardData {
+  todayMood: number | null;
+  streak: {
+    count: number;
+    achievement: string | null;
+    description: string | null;
+    nextMilestone: number | null;
+  };
+  weeklyTrend: Array<{
+    day: string;
+    mood: number | null;
+  }>;
+  stats: {
+    journalCount: number;
+    moodCheckIns: number;
+  };
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+  const { user } = useSelector((state: RootState) => state.auth);
   const [userName, setUserName] = useState('User');
-  const [streak, setStreak] = useState(7);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [todayMood, setTodayMood] = useState<number | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    const storedName = localStorage.getItem('firstName');
-    if (storedName) {
-      setUserName(toTitleCase(storedName));
-    }
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getDashboardData();
+        if (response.status === 'success') {
+          // Transform weekly trend data to ensure Sunday-Saturday order with 0 for missing days
+          const transformedData = {
+            ...response.data,
+            weeklyTrend: transformWeeklyTrend(response.data.weeklyTrend)
+          };
+          setDashboardData(transformedData);
+        }
+      } catch (err) {
+        setError('Failed to load dashboard data');
+        console.error('Dashboard fetch error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, []);
 
-  // Sample data for the mini chart
-  const weeklyData = [
-    { day: 'Mon', mood: 4 },
-    { day: 'Tue', mood: 3 },
-    { day: 'Wed', mood: 4 },
-    { day: 'Thu', mood: 5 },
-    { day: 'Fri', mood: 3 },
-    { day: 'Sat', mood: 4 },
-    { day: 'Sun', mood: todayMood || 0 },
-  ];
+  useEffect(() => {
+    if (user?.firstName) {
+      setUserName(toTitleCase(user.firstName));
+    }
+  }, [user]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -45,10 +82,66 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return 'Good evening';
   };
 
-  const handleMoodSelect = (mood: number) => {
-    setTodayMood(mood);
-    console.log('Mood selected:', mood);
+  const handleMoodSelect = async (mood: number) => {
+    try {
+      setTodayMood(mood);
+      await saveMoodEntry(mood);
+
+      // Show success message
+      setShowSuccess(true);
+
+      // Hide after 3 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
+
+      // Refetch dashboard data
+      const response = await getDashboardData();
+      if (response.status === 'success') {
+        setDashboardData(response.data);
+      }
+    } catch (err) {
+      setError('Failed to save mood');
+      console.error('Mood save error:', err);
+    }
   };
+
+  const transformWeeklyTrend = (data: Array<{ day: string; mood: number | null }>) => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay()); // Go to Sunday
+
+    return days.map((day) => {
+      const existingData = data.find(d => d.day === day);
+      return {
+        day,
+        mood: existingData?.mood || 0 // Replace null with 0
+      };
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <div className="text-red-500 mb-2">⚠️</div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h3>
+            <p className="text-gray-600">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 pb-20">
@@ -71,11 +164,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </CardHeader>
           <CardContent>
             <MoodSelector
-              selectedMood={todayMood}
+              selectedMood={dashboardData?.todayMood || null}
               onMoodSelect={handleMoodSelect}
               size="large"
             />
-            {todayMood && (
+            {showSuccess && (
               <p className="text-center text-slate-600 mt-3 animate-scale-in">
                 Thanks for sharing! Your mood has been recorded.
               </p>
@@ -114,11 +207,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <CardContent>
             <div className="grid grid-cols-2 gap-4 text-center">
               <div className="p-3 rounded-lg bg-white/50">
-                <div className="text-2xl font-bold text-blue-600">{todayMood || '?'}/5</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {dashboardData?.todayMood || '?'}/5
+                </div>
                 <div className="text-sm text-slate-600">Current Mood</div>
               </div>
               <div className="p-3 rounded-lg bg-white/50">
-                <div className="text-2xl font-bold text-emerald-600">{streak}</div>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {dashboardData?.streak.count || 0}
+                </div>
                 <div className="text-sm text-slate-600">Day Streak</div>
               </div>
             </div>
@@ -135,7 +232,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <CardContent>
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weeklyData}>
+                <LineChart data={dashboardData?.weeklyTrend || []}>
                   <XAxis dataKey="day" axisLine={false} tickLine={false} className="text-xs" />
                   <YAxis hide domain={[1, 5]} />
                   <Line
@@ -160,8 +257,25 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 <Award className="w-6 h-6 text-amber-600" />
               </div>
               <div>
-                <div className="font-semibold text-slate-800">Week Warrior!</div>
-                <div className="text-sm text-slate-600">7 days of consistent journaling</div>
+                {dashboardData?.streak.count ? (
+                  <>
+                    <div className="font-semibold text-slate-800">
+                      {dashboardData.streak.achievement}
+                    </div>
+                    <div className="text-sm text-slate-600">
+                      {dashboardData.streak.description}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="font-semibold text-slate-800">
+                      Start Your Journey!
+                    </div>
+                    <div className="text-sm text-slate-600">
+                      Write your first journal entry to earn achievement badges
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </CardContent>

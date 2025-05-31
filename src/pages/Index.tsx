@@ -12,53 +12,52 @@ import Authentication from '@/components/Authentication';
 import Onboarding from '@/components/Onboarding';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-// import { Companion } from '@/components/Companion';
 import { ProfessionalSupport } from '@/components/ProfessionalSupport';
 import { Companion } from '../components/Companion';
+import { useSelector, useDispatch } from 'react-redux';
+import type { RootState } from '@/store';
 
 const Index = () => {
-  const [currentPage, setCurrentPage] = useState('dashboard');
+  const dispatch = useDispatch();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+  const [currentPage, setCurrentPage] = useState<string>('dashboard');
   const [showCrisisModal, setShowCrisisModal] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [pendingOnboarding, setPendingOnboarding] = useState(false);
 
-  // For demo purposes - in a real app this would be managed by Supabase auth
-  // and proper database storage
-  useEffect(() => {
-    // Check if user is authenticated (local storage in this mockup)
-    const savedAuth = localStorage.getItem('demo-auth');
-    const savedOnboarding = localStorage.getItem('demo-onboarding');
-    
-    if (savedAuth) {
-      setIsAuthenticated(true);
-    }
-    
-    if (savedOnboarding) {
-      setIsOnboardingComplete(true);
-    }
-  }, []);
-
-  const handleAuthComplete = () => {
-    localStorage.setItem('demo-auth', 'true');
-    setIsAuthenticated(true);
-  };
-
+  // Handle onboarding completion
   const handleOnboardingComplete = () => {
-    localStorage.setItem('demo-onboarding', 'true');
-    setIsOnboardingComplete(true);
+    setShowOnboarding(false);
+    setPendingOnboarding(false);
+    setCurrentPage('dashboard');
   };
 
-  // Show the crisis support modal (could be triggered by AI or user)
-  const handleShowCrisisSupport = () => {
-    setShowCrisisModal(true);
+  // Handle authentication completion
+  const handleAuthComplete = (isNewUser: boolean = false) => {
+    if (isNewUser) {
+      // New user from signup - show onboarding
+      setPendingOnboarding(true);
+      setShowOnboarding(true);
+    } else {
+      // Existing user from signin - go to dashboard
+      setCurrentPage('dashboard');
+    }
   };
 
-  // Render appropriate page based on auth and onboarding status
-  if (!isAuthenticated) {
+  // Check if user needs onboarding when authenticated
+  // useEffect(() => {
+  //   if (isAuthenticated && user && !user.onboardingComplete) {
+  //     setShowOnboarding(true);
+  //   }
+  // }, [isAuthenticated, user]);
+
+  // For unauthenticated users: show Authentication component unless pending onboarding
+  if (!isAuthenticated && !pendingOnboarding) {
     return <Authentication onComplete={handleAuthComplete} />;
   }
 
-  if (isAuthenticated && !isOnboardingComplete) {
+  // For users pending onboarding (new signups) or authenticated users who haven't completed onboarding
+  if (showOnboarding) {
     return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
@@ -70,7 +69,7 @@ const Index = () => {
         return <Journal onNavigate={setCurrentPage} />;
       case 'journal-history':
         return <JournalHistory onNavigate={setCurrentPage} />;
-      case 'insights':  // Changed from 'analytics' to 'insights'
+      case 'insights':
         return <Analytics onNavigate={setCurrentPage} />;
       case 'companion':
         return <Companion onNavigate={setCurrentPage} />;
@@ -91,11 +90,11 @@ const Index = () => {
       <div className="fixed top-4 right-4 z-40">
         <ThemeToggle />
       </div>
-      
+
       {/* Crisis Support Button - Float in corner */}
       <div className="fixed bottom-20 right-4 z-40">
-        <Button 
-          onClick={handleShowCrisisSupport}
+        <Button
+          onClick={() => setShowCrisisModal(true)}
           className="rounded-full h-12 w-12 bg-red-500 hover:bg-red-600 p-0 shadow-lg"
         >
           <AlertTriangle className="h-5 w-5" />
@@ -104,17 +103,17 @@ const Index = () => {
 
       {/* Main Content */}
       {renderCurrentPage()}
-      
+
       {/* Bottom Navigation */}
-      <BottomNav 
-        currentPage={currentPage} 
-        onNavigate={setCurrentPage} 
+      <BottomNav
+        currentPage={currentPage}
+        onNavigate={setCurrentPage}
       />
-      
+
       {/* Crisis Support Modal */}
-      <CrisisSupport 
-        open={showCrisisModal} 
-        onClose={() => setShowCrisisModal(false)} 
+      <CrisisSupport
+        open={showCrisisModal}
+        onClose={() => setShowCrisisModal(false)}
       />
     </div>
   );
