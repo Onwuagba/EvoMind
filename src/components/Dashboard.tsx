@@ -249,37 +249,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           </CardContent>
         </Card>
 
-        {/* Achievement Badge */}
-        <Card className="shadow-lg border-0 bg-gradient-to-r from-amber-400/10 to-orange-400/10 backdrop-blur-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-amber-100">
-                <Award className="w-6 h-6 text-amber-600" />
+        {/* Achievement Badge - Only show when there's an achievement */}
+        {dashboardData?.streak.achievement && (
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-amber-400/10 to-orange-400/10 backdrop-blur-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-amber-100">
+                  <Award className="w-6 h-6 text-amber-600" />
+                </div>
+                <div>
+                  <div className="font-semibold text-slate-800">
+                    {dashboardData.streak.achievement}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    {dashboardData.streak.description}
+                  </div>
+                </div>
               </div>
-              <div>
-                {dashboardData?.streak.count ? (
-                  <>
-                    <div className="font-semibold text-slate-800">
-                      {dashboardData.streak.achievement}
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      {dashboardData.streak.description}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="font-semibold text-slate-800">
-                      Start Your Journey!
-                    </div>
-                    <div className="text-sm text-slate-600">
-                      Write your first journal entry to earn achievement badges
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
