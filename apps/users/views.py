@@ -329,7 +329,7 @@ class DashboardView(APIView):
             reverse=True
         )
         
-        if achieved_days:
+        if achieved_days and achieved_days[0] == streak_days:
             achievement = self.STREAK_ACHIEVEMENTS[achieved_days[0]]
             return achievement['title'], achievement['description']
         return None, None
