@@ -12,9 +12,24 @@ import {
   TrendingUp,
   Sparkles,
   BookOpen,
-  AlignLeft // Add this import
+  AlignLeft,
+  Loader2,
+  AlertTriangle,
+  Brain,
+  Lightbulb,
+  Target,
+  Shield
 } from 'lucide-react';
 import { api } from '@/lib/axios';
+import { cn } from '@/lib/utils';
+
+interface JournalAnalysis {
+  emotional_patterns: string[];
+  trigger_identification: string[];
+  coping_suggestions: string[];
+  risk_level: 'low' | 'medium' | 'high';
+  analysis_summary: string;
+}
 
 interface JournalEntry {
   id: number;
@@ -25,6 +40,7 @@ interface JournalEntry {
   updated_at: string;
   user: number;
   isFavorite?: boolean;
+  analysis?: JournalAnalysis;
 }
 
 interface PaginationMeta {
@@ -45,6 +61,7 @@ const JournalHistory: React.FC<JournalHistoryProps> = ({ onNavigate }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Fetch journal entries
   useEffect(() => {
@@ -82,6 +99,37 @@ const JournalHistory: React.FC<JournalHistoryProps> = ({ onNavigate }) => {
     if (diff > 0) return { text: `+${diff}`, color: 'text-green-600', icon: TrendingUp };
     if (diff < 0) return { text: `${diff}`, color: 'text-red-600', icon: TrendingUp };
     return { text: '0', color: 'text-slate-600', icon: TrendingUp };
+  };
+
+  // Add this function to fetch analysis
+  const fetchAnalysis = async (journalId: number) => {
+    try {
+      setIsAnalyzing(true);
+      const response = await api.get(`/analysis/journal/${journalId}/`);
+      if (response.data.status === 'success') {
+        setSelectedEntry(prev => prev ? { ...prev, analysis: response.data.data } : null);
+      }
+    } catch (err) {
+      console.error('Error fetching analysis:', err);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Update the existing selection handler
+  const handleEntrySelect = (entry: JournalEntry) => {
+    setSelectedEntry(entry);
+    fetchAnalysis(entry.id);
+  };
+
+  const getRiskData = (level: string) => {
+    const data = {
+      low: { color: 'text-green-700 bg-green-50', action: 'Continue Journaling' },
+      medium: { color: 'text-amber-700 bg-amber-50', action: 'Schedule Check-in' },
+      high: { color: 'text-red-700 bg-red-50', action: 'Seek Support' }
+    }[level] || { color: 'text-slate-700 bg-slate-50', action: 'Review' };
+
+    return data;
   };
 
   if (selectedEntry) {
@@ -125,10 +173,12 @@ const JournalHistory: React.FC<JournalHistoryProps> = ({ onNavigate }) => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Content Section */}
               <div className="bg-slate-50 p-4 rounded-lg">
                 <p className="text-slate-700 leading-relaxed">{selectedEntry.content}</p>
               </div>
 
+              {/* Mood Section */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center p-3 bg-blue-50 rounded-lg">
                   <p className="text-xs text-slate-600 mb-1">Before Writing</p>
@@ -142,6 +192,124 @@ const JournalHistory: React.FC<JournalHistoryProps> = ({ onNavigate }) => {
                 </div>
               </div>
 
+              {/* Analysis Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-slate-800">Journal Analysis</h3>
+                    {isAnalyzing && (
+                      <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
+                    )}
+                  </div>
+                  {selectedEntry.analysis && (
+                    <Badge
+                      className={cn(
+                        "text-xs font-medium",
+                        getRiskData(selectedEntry.analysis.risk_level).color
+                      )}
+                    >
+                      {selectedEntry.analysis.risk_level.toUpperCase()} RISK
+                    </Badge>
+                  )}
+                </div>
+
+                {selectedEntry.analysis ? (
+                  <div className="space-y-4">
+                    {/* Summary with Brain icon */}
+                    <div className="bg-slate-50 p-4 rounded-lg">
+                      <div className="flex gap-3 mb-2">
+                        <Brain className="w-5 h-5 text-violet-500" />
+                        <h4 className="text-xs font-medium text-slate-700">SUMMARY</h4>
+                      </div>
+                      <p className="text-sm text-slate-700 leading-relaxed">
+                        {selectedEntry.analysis.analysis_summary}
+                      </p>
+                    </div>
+
+                    {/* Emotional Patterns with Lightbulb */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <Lightbulb className="w-5 h-5 text-amber-500" />
+                        <h4 className="text-xs font-medium text-slate-700">EMOTIONAL PATTERNS</h4>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedEntry.analysis.emotional_patterns.map((pattern, i) => (
+                          <Badge key={i} variant="secondary" className="bg-amber-50 text-amber-700">
+                            {pattern}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Triggers with Target */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <Target className="w-5 h-5 text-red-500" />
+                        <h4 className="text-xs font-medium text-slate-700">IDENTIFIED TRIGGERS</h4>
+                      </div>
+                      <ul className="list-disc list-inside space-y-1 pl-8">
+                        {selectedEntry.analysis.trigger_identification.map((trigger, i) => (
+                          <li key={i} className="text-sm text-slate-700">{trigger}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Coping Strategies with Shield */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <Shield className="w-5 h-5 text-emerald-500" />
+                        <h4 className="text-xs font-medium text-slate-700">COPING STRATEGIES</h4>
+                      </div>
+                      <ul className="list-disc list-inside space-y-1 pl-8">
+                        {selectedEntry.analysis.coping_suggestions.map((suggestion, i) => (
+                          <li key={i} className="text-sm text-slate-700">{suggestion}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Action Button based on risk level */}
+                    <div className="pt-2">
+                      <Button
+                        className={cn(
+                          "w-full",
+                          selectedEntry.analysis.risk_level === 'high' && "bg-red-600 hover:bg-red-700",
+                          selectedEntry.analysis.risk_level === 'medium' && "bg-amber-600 hover:bg-amber-700",
+                          selectedEntry.analysis.risk_level === 'low' && "bg-green-600 hover:bg-green-700"
+                        )}
+                        onClick={() => {
+                          // Handle action based on risk level
+                          const action = getRiskData(selectedEntry.analysis?.risk_level || '').action;
+                          switch (action) {
+                            case 'Seek Support':
+                              // Navigate to support resources
+                              onNavigate && onNavigate('/support');
+                              break;
+                            case 'Schedule Check-in':
+                              // Navigate to check-in scheduling
+                              onNavigate && onNavigate('/check-in');
+                              break;
+                            case 'Continue Journaling':
+                              // Navigate to new journal entry
+                              onNavigate && onNavigate('/journal/new');
+                              break;
+                          }
+                        }}
+                      >
+                        {getRiskData(selectedEntry.analysis.risk_level).action}
+                      </Button>
+                    </div>
+                  </div>
+                ) : !isAnalyzing && (
+                  <div className="flex items-center justify-center p-6 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <AlertTriangle className="w-5 h-5" />
+                      <span>Analysis not available</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Stats Section */}
               <div className="flex justify-between items-center text-sm text-slate-600">
                 <span>{selectedEntry.content.split(' ').length} words</span>
                 {(() => {
@@ -233,7 +401,7 @@ const JournalHistory: React.FC<JournalHistoryProps> = ({ onNavigate }) => {
                 key={entry.id}
                 className="border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:translate-y-[-2px] cursor-pointer bg-white/80 backdrop-blur-sm"
               >
-                <CardContent className="p-5" onClick={() => setSelectedEntry(entry)}>
+                <CardContent className="p-5" onClick={() => handleEntrySelect(entry)}>
                   {/* Date and Mood */}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-2">

@@ -27,6 +27,7 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
   const [recommendedExercises, setRecommendedExercises] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [entryId, setEntryId] = useState<string | null>(null); // State to store the entry ID
+  const [moodError, setMoodError] = useState<string | null>(null); // Add state for mood error
 
   const prompts = [
     "What's one thing that made you smile today?",
@@ -47,75 +48,110 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
 
   // Auto-save functionality
   useEffect(() => {
-    if (!entry || entry.length < 10) return;
+    // Don't auto-save if entry is too short or no before mood
+    if (!entry || entry.length < 10 || !beforeMood) return;
 
     const timer = setTimeout(async () => {
       try {
         const saveData = {
           content: entry,
-          mood_score: beforeMood
+          before_mood: beforeMood,
+          after_mood: afterMood || beforeMood
         };
 
-        // Update existing entry if we have an ID
+        interface JournalResponse {
+          data: {
+            data: {
+              id: string;
+              content: string;
+              before_mood: number;
+              after_mood: number;
+            }
+          }
+        }
+        let response: JournalResponse;
         if (entryId) {
-          await api.put(`/journals/${entryId}/`, saveData);
+          // Update existing entry
+          response = await api.put(`/journals/${entryId}/`, saveData);
         } else {
-          // Create new entry and store ID
-          const response = await api.post('/journals/', saveData);
-          setEntryId(response.data.id);
+          // Create new entry
+          response = await api.post('/journals/', saveData);
+          // Store the new entry ID
+          setEntryId(response.data.data.id);
         }
 
-        setLastSaved(new Date().toLocaleTimeString());
+        setLastSaved(formatTime(new Date()));
       } catch (error) {
         console.error('Auto-save failed:', error);
       }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [entry, beforeMood, entryId]);
+  }, [entry, beforeMood, afterMood, entryId]);
 
-  // Update handleSave to use the API
+  // Update the last saved time format
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    }).toLowerCase();
+  };
+
+  // Update the handleSave function
   const handleSave = async () => {
-    if (!beforeMood && !afterMood) {
+    // Clear any previous mood error
+    setMoodError(null);
+
+    if (!beforeMood) {
+      setMoodError("Please select how you're feeling before writing");
+      return;
+    }
+
+    if (!entry || entry.length < 10) {
       toast({
-        title: "Mood Required",
-        description: "Please select your current mood before saving",
+        title: "Entry Too Short",
+        description: "Please write at least a few sentences",
         variant: "destructive",
       });
       return;
     }
 
-    setIsSaving(true); // Set saving state to true
+    setIsSaving(true);
     try {
-      // Save the journal entry
-      const journalData = await createJournalEntry({
+      const saveData = {
         content: entry,
-        mood_score: afterMood || beforeMood // Use after mood if available, else before mood
-      });
+        before_mood: beforeMood,
+        after_mood: afterMood || beforeMood
+      };
 
-      // Analyze the content
-      const analysis = await analyzeJournalEntry(entry);
+      let journalData;
+      if (entryId) {
+        // Update existing entry
+        const response = await api.put(`/journals/${entryId}/`, saveData);
+        journalData = response.data.data;
+      } else {
+        // Create new entry only if no entryId exists
+        const response = await api.post('/journals/', saveData);
+        journalData = response.data.data;
+        setEntryId(journalData.id);
+      }
 
-      // Show success message
       toast({
         title: "Journal Entry Saved",
         description: "Your thoughts have been recorded successfully.",
         duration: 3000,
       });
 
-      // Update last saved time
-      setLastSaved(new Date().toLocaleTimeString());
+      // Use the existing entryId for analysis
+      const analysis = await analyzeJournalEntry(entryId || journalData.id);
 
-      // Show crisis support if risk level is high
       if (analysis.risk_level === 'high') {
         setCrisisSupport(true);
       }
 
-      // Update patterns and recommendations
       setPatterns(analysis.emotional_patterns || []);
       setRecommendedExercises(analysis.coping_suggestions || []);
-
-      // Navigate back to dashboard after successful save
       onNavigate('dashboard');
 
     } catch (error) {
@@ -127,7 +163,7 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
         duration: 5000,
       });
     } finally {
-      setIsSaving(false); // Reset saving state
+      setIsSaving(false);
     }
   };
 
@@ -214,9 +250,15 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
           <CardContent>
             <MoodSelector
               selectedMood={beforeMood}
-              onMoodSelect={setBeforeMood}
+              onMoodSelect={(mood) => {
+                setBeforeMood(mood);
+                setMoodError(null); // Clear error when mood is selected
+              }}
               label="Rate your current mood"
             />
+            {moodError && (
+              <p className="text-sm text-red-500 mt-2">{moodError}</p>
+            )}
           </CardContent>
 
           {/* Writing Prompt */}

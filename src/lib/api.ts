@@ -34,10 +34,13 @@ export const saveMoodEntry = async (mood: number): Promise<void> => {
     await api.post('/mood/', { mood });
 };
 
-export const createJournalEntry = async (data: {
+interface JournalEntryPayload {
     content: string;
-    mood_score?: number;
-}) => {
+    before_mood: number;
+    after_mood: number;
+}
+
+export const createJournalEntry = async (data: JournalEntryPayload) => {
     const response = await api.post('/journals/', data);
     return response.data;
 };
