@@ -6,6 +6,8 @@ from django.conf import settings
 import logging
 import json
 from openai import AsyncOpenAI
+
+from apps.journal.models import Journal
 from .models import JournalAnalysis
 import hashlib
 from datetime import datetime, timedelta
@@ -239,12 +241,13 @@ class GeminiService:
         """Generate a unique hash for the content."""
         return hashlib.sha256(content.encode()).hexdigest()
 
-    async def analyze_journal(self, user, content: str) -> Dict[str, Any]:
+    async def analyze_journal(self, user, journal: Journal) -> Dict[str, Any]:
         """
         Analyzes a journal entry using Google's Gemini Pro and returns structured analysis.
         """
-        content_hash = self._generate_content_hash(content)
+        content_hash = self._generate_content_hash(journal.content)
         cache_key = f"gemini_journal_analysis_{content_hash}"
+        content = journal.content
 
         # Try to get from cache first
         cached_result = cache.get(cache_key)
@@ -279,6 +282,7 @@ class GeminiService:
             # Save to database without content hash
             await JournalAnalysis.objects.acreate(
                 user=user,
+                journal=journal,
                 content=content,
                 analysis_type='gemini',
                 **analysis

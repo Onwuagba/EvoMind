@@ -1,18 +1,19 @@
-from rest_framework import status
+from rest_framework import status, viewsets
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 from apps.journal.models import DailyMood, Journal
-from .serializers import UserProfileSerializer, UserSettingsSerializer, OnboardingSerializer
-from .models import UserProfile, OnboardingStatus
+from .serializers import UserProfileSerializer, UserSettingsSerializer, OnboardingSerializer, ExerciseSerializer, SelfCareRoutineSerializer
+from .models import RoutineExercise, UserProfile, OnboardingStatus, Exercise, SelfCareRoutine
 from .throttling import UserProfileThrottle
 import logging
 from django.utils import timezone
-from asgiref.sync import sync_to_async
-from datetime import timedelta, datetime
+from datetime import timedelta
 from apps.analysis.services import AIAnalysisService, GeminiService
+from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 
@@ -416,7 +417,8 @@ class DashboardView(APIView):
 
             service = GeminiService()
             import asyncio
-            quote_data = asyncio.run(service.generate_daily_quote(context))
+            quote_data = asyncio.run(
+                service.generate_daily_quote(context))
 
             if quote_data:
                 cache.set(cache_key, quote_data, timeout=86400)
@@ -516,3 +518,118 @@ class DashboardView(APIView):
                     'details': str(e)
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ExerciseViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for viewing exercises
+    """
+    serializer_class = ExerciseSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return Exercise.objects.none()
+
+        queryset = Exercise.objects.all()
+        category = self.request.query_params.get('category', None)
+        if category:
+            queryset = queryset.filter(category=category)
+        return queryset
+
+    @swagger_auto_schema(
+        operation_description="Mark an exercise as completed",
+        responses={
+            200: "Success",
+            404: "Exercise not found"
+        }
+    )
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        exercise = self.get_object()
+        # Track completion logic here
+        return Response({'status': 'success'})
+
+
+class SelfCareRoutineViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing self-care routines
+    """
+    serializer_class = SelfCareRoutineSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Handle Swagger schema generation
+        if getattr(self, 'swagger_fake_view', False):
+            return SelfCareRoutine.objects.none()
+        return SelfCareRoutine.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @swagger_auto_schema(
+        operation_description="Generate a personalized self-care routine",
+        responses={
+            200: SelfCareRoutineSerializer(),
+            400: "Bad Request",
+            500: "Internal Server Error"
+        }
+    )
+    @action(detail=False, methods=['post'])
+    async def generate(self, request):
+        """Generate personalized routine based on journal analysis"""
+        try:
+            service = AIAnalysisService()
+            analysis = await service.analyze_trauma_pattern(
+                request.user,
+                {'description': request.data.get('context', '')}
+            )
+
+            routine = await sync_to_async(SelfCareRoutine.objects.create)(
+                user=request.user,
+                title="Your Personalized Healing Journey",
+                description="A custom routine based on your needs",
+                frequency="daily"
+            )
+
+            # Add exercises based on analysis
+            recommended_exercises = await sync_to_async(Exercise.objects.filter)(
+                category__in=self._get_recommended_categories(
+                    analysis)
+            )
+            recommended_exercises = await sync_to_async(list)(recommended_exercises)
+
+            for i, exercise in enumerate(recommended_exercises):
+                await sync_to_async(RoutineExercise.objects.create)(
+                    routine=routine,
+                    exercise=exercise,
+                    order=i
+                )
+
+            serializer = self.get_serializer(routine)
+            return Response({
+                'status': 'success',
+                'data': serializer.data
+            })
+        except Exception as e:
+            logger.error(f"Error generating routine: {str(e)}")
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'routine_generation_error',
+                    'message': str(e)
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def _get_recommended_categories(self, analysis):
+        """Get recommended exercise categories based on analysis"""
+        categories = []
+        if analysis.get('anxiety_level', 0) > 0.6:
+            categories.extend(['breathing', 'meditation'])
+        if analysis.get('reflection_needed', False):
+            categories.append('reflection')
+        if analysis.get('grounding_needed', False):
+            categories.append('grounding')
+        if not categories:
+            categories = ['journaling']  # default category
+        return categories

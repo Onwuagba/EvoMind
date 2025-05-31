@@ -6,8 +6,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist
+from asgiref.sync import sync_to_async
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from django.core.exceptions import ValidationError
+
+from apps.journal.models import Journal
+from .models import JournalAnalysis
 from .serializers import (
     JournalAnalysisRequestSerializer,
     JournalAnalysisResponseSerializer,
@@ -16,17 +22,20 @@ from .serializers import (
 from .services import AIAnalysisService, GeminiService
 from .throttling import AIAnalysisThrottle
 
+
 class AnalysisViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['post'])
     def analyze_journal(self, request):
         service = AIAnalysisService()
-        result = service.analyze_journal_entry(request.data['content'])
+        result = service.analyze_journal_entry(
+            request.data['content'])
         return Response(result)
+
 
 class JournalAnalysisView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [AIAnalysisThrottle]
-    http_method_names = ['post']
+    http_method_names = ['post', 'get']
 
     @swagger_auto_schema(
         request_body=JournalAnalysisRequestSerializer,
@@ -50,8 +59,9 @@ class JournalAnalysisView(APIView):
             ValidationError: If the request data is invalid.
             Exception: If there is an unexpected error during analysis.
         """
-        serializer = JournalAnalysisRequestSerializer(data=request.data)
-        
+        serializer = JournalAnalysisRequestSerializer(
+            data=request.data)
+
         if not serializer.is_valid():
             return Response({
                 'status': 'error',
@@ -92,6 +102,98 @@ class JournalAnalysisView(APIView):
                 }
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'journal_id',
+                openapi.IN_PATH,
+                description="ID of the journal entry to analyze",
+                type=openapi.TYPE_INTEGER,
+                required=True
+            ),
+        ],
+        responses={
+            200: JournalAnalysisResponseSerializer,
+            404: openapi.Response(
+                description="Journal entry not found",
+                examples={
+                    "application/json": {
+                        "status": "error",
+                        "error": {"message": "Journal entry not found"}
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="Analysis error",
+                examples={
+                    "application/json": {
+                        "status": "error",
+                        "error": {
+                            "code": "analysis_error",
+                            "message": "Failed to analyze journal entry"
+                        }
+                    }
+                }
+            )
+        },
+        operation_description="Get analysis for a specific journal entry. Returns cached analysis if available, otherwise performs new analysis."
+    )
+    def get(self, request, journal_id=None):
+        """Get analysis for a specific journal entry"""
+        try:
+            # Use regular ORM queries instead of sync_to_async
+            analysis = JournalAnalysis.objects.filter(
+                journal_id=journal_id,
+                user=request.user
+            ).first()
+
+            if analysis:
+                serializer = JournalAnalysisResponseSerializer(analysis)
+                return Response({
+                    'status': 'success',
+                    'data': serializer.data
+                })
+
+            # Get journal entry
+            try:
+                journal = Journal.objects.get(
+                    id=journal_id,
+                    user=request.user
+                )
+            except ObjectDoesNotExist:
+                return Response({
+                    'status': 'error',
+                    'error': {'message': 'Journal entry not found'}
+                }, status=status.HTTP_404_NOT_FOUND)
+
+            # Run new analysis
+            service = GeminiService()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                analysis = loop.run_until_complete(
+                    service.analyze_journal(
+                        request.user,
+                        journal,
+                    )
+                )
+            finally:
+                loop.close()
+
+            return Response({
+                'status': 'success',
+                'data': analysis
+            })
+
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'analysis_error',
+                    'message': 'Failed to analyze journal entry',
+                    'details': str(e)
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class TraumaPatternView(APIView):
     permission_classes = [IsAuthenticated]
@@ -117,11 +219,11 @@ class TraumaPatternView(APIView):
             Exception: If there is an unexpected error.
         """
         serializer = TraumaEventSerializer(data=request.data)
-        
+
         try:
             serializer.is_valid(raise_exception=True)
             service = AIAnalysisService()
-            
+
             analysis = asyncio.run(
                 service.analyze_trauma_pattern(
                     request.user,

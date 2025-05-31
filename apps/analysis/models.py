@@ -1,8 +1,14 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.fields import ArrayField
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from asgiref.sync import sync_to_async
+
+from apps.journal.models import Journal
 
 User = get_user_model()
+
 
 class JournalAnalysis(models.Model):
     RISK_LEVELS = [
@@ -12,13 +18,19 @@ class JournalAnalysis(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    journal = models.OneToOneField(
+        Journal, on_delete=models.CASCADE, related_name='analysis')
     content = models.TextField()
-    emotional_patterns = ArrayField(models.CharField(max_length=255), blank=True)
-    trigger_identification = ArrayField(models.CharField(max_length=255), blank=True)
-    coping_suggestions = ArrayField(models.CharField(max_length=255), blank=True)
+    emotional_patterns = ArrayField(
+        models.CharField(max_length=255), blank=True)
+    trigger_identification = ArrayField(
+        models.CharField(max_length=255), blank=True)
+    coping_suggestions = ArrayField(
+        models.CharField(max_length=255), blank=True)
     risk_level = models.CharField(max_length=10, choices=RISK_LEVELS)
     analysis_summary = models.TextField(null=True, blank=True)
-    analysis_type = models.CharField(max_length=50, null=True, blank=True)  # e.g., 'gemini', 'openai'
+    analysis_type = models.CharField(
+        max_length=50, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     analyzed_at = models.DateTimeField(auto_now=True)
 
