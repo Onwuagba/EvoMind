@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Heart, PenTool, TrendingUp, Calendar, Award, Loader2, Quote } from 'lucide-react';
 import MoodSelector from './MoodSelector';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
 import { getDashboardData, saveMoodEntry, type DashboardResponse } from '@/lib/api';
@@ -270,8 +270,30 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="h-32">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dashboardData?.weeklyTrend || []}>
-                  <XAxis dataKey="day" axisLine={false} tickLine={false} className="text-xs" />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    className="text-xs"
+                  />
                   <YAxis hide domain={[1, 5]} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-2 shadow-lg rounded-lg border border-neutral-200">
+                            <p className="text-sm font-medium text-neutral-900">
+                              {label}
+                            </p>
+                            <p className="text-sm text-neutral-600">
+                              Mood: {payload[0].value}/5
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="mood"

@@ -1,53 +1,85 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, TrendingUp, Clock, Heart, Award } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { Loader2 } from 'lucide-react';
+import { api } from '@/lib/axios';
 
 interface AnalyticsProps {
   onNavigate: (page: string) => void;
 }
 
+interface AnalyticsData {
+  average_mood: number;
+  streak: number;
+  timeline: Array<{
+    date: string;
+    mood: number;
+  }>;
+  writing_times: {
+    morning: number;
+    afternoon: number;
+    evening: number;
+    night: number;
+  };
+  emotional_words: Record<string, number>;
+  insights: {
+    pattern_detected: string;
+    growth_area: string;
+    suggestion: string;
+  };
+}
+
 const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
   const [timeRange, setTimeRange] = useState<'week' | 'month'>('week');
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Sample data
-  const weeklyMoodData = [
-    { day: 'Mon', mood: 4, entries: 1 },
-    { day: 'Tue', mood: 3, entries: 1 },
-    { day: 'Wed', mood: 4, entries: 2 },
-    { day: 'Thu', mood: 5, entries: 1 },
-    { day: 'Fri', mood: 3, entries: 1 },
-    { day: 'Sat', mood: 4, entries: 1 },
-    { day: 'Sun', mood: 4, entries: 1 },
-  ];
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      setLoading(true);
+      try {
+        const response = await api.get(`/users/analytics/?period=${timeRange}`);
+        setAnalyticsData(response.data.data);
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const monthlyMoodData = [
-    { week: 'Week 1', mood: 3.8 },
-    { week: 'Week 2', mood: 4.2 },
-    { week: 'Week 3', mood: 3.5 },
-    { week: 'Week 4', mood: 4.0 },
-  ];
+    fetchAnalytics();
+  }, [timeRange]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Transform API data for charts
+  const timelineData = analyticsData?.timeline.map(entry => ({
+    day: entry.date,
+    mood: entry.mood
+  })) || [];
 
   const timePatterns = [
-    { time: 'Morning', count: 12, color: '#fbbf24' },
-    { time: 'Afternoon', count: 8, color: '#60a5fa' },
-    { time: 'Evening', count: 15, color: '#a78bfa' },
-    { time: 'Night', count: 5, color: '#34d399' },
+    { time: 'Morning', count: analyticsData?.writing_times.morning || 0, color: '#fbbf24' },
+    { time: 'Afternoon', count: analyticsData?.writing_times.afternoon || 0, color: '#60a5fa' },
+    { time: 'Evening', count: analyticsData?.writing_times.evening || 0, color: '#a78bfa' },
+    { time: 'Night', count: analyticsData?.writing_times.night || 0, color: '#34d399' }
   ];
 
-  const emotionalWords = [
-    { word: 'grateful', count: 15, size: 24 },
-    { word: 'anxious', count: 8, size: 16 },
-    { word: 'peaceful', count: 12, size: 20 },
-    { word: 'excited', count: 10, size: 18 },
-    { word: 'tired', count: 6, size: 14 },
-    { word: 'hopeful', count: 14, size: 22 },
-  ];
+  const emotionalWords = Object.entries(analyticsData?.emotional_words || {}).map(([word, count]) => ({
+    word,
+    count,
+    size: Math.max(14, Math.min(24, 14 + (count * 2))) // Scale size between 14-24px
+  }));
 
-  const currentData = timeRange === 'week' ? weeklyMoodData : monthlyMoodData;
-  const averageMood = currentData.reduce((sum, item) => sum + item.mood, 0) / currentData.length;
+  const averageMood = analyticsData?.average_mood || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 pb-20">
@@ -92,13 +124,17 @@ const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-2 gap-4">
           <Card className="shadow-lg border-0 bg-gradient-to-r from-blue-400/10 to-blue-500/10">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{averageMood.toFixed(1)}/5</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {averageMood.toFixed(1)}/5
+              </div>
               <div className="text-sm text-slate-600">Average Mood</div>
             </CardContent>
           </Card>
           <Card className="shadow-lg border-0 bg-gradient-to-r from-emerald-400/10 to-emerald-500/10">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-emerald-600">7</div>
+              <div className="text-2xl font-bold text-emerald-600">
+                {analyticsData?.streak || 0}
+              </div>
               <div className="text-sm text-slate-600">Day Streak</div>
             </CardContent>
           </Card>
@@ -115,14 +151,31 @@ const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
           <CardContent>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={currentData}>
-                  <XAxis 
-                    dataKey={timeRange === 'week' ? 'day' : 'week'} 
-                    axisLine={false} 
-                    tickLine={false} 
+                <LineChart data={timelineData}>
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
                     className="text-xs"
                   />
                   <YAxis hide domain={[1, 5]} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white p-2 shadow-lg rounded-lg border border-neutral-200">
+                            <p className="text-sm font-medium text-neutral-900">
+                              {label}
+                            </p>
+                            <p className="text-sm text-neutral-600">
+                              Mood: {payload[0].value}/5
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="mood"
@@ -196,23 +249,23 @@ const Analytics: React.FC<AnalyticsProps> = ({ onNavigate }) => {
           <CardHeader className="pb-4">
             <CardTitle className="text-lg font-semibold text-slate-800 flex items-center gap-2">
               <Award className="w-5 h-5 text-amber-600" />
-              Weekly Insights
+              {timeRange === 'week' ? 'Weekly' : 'Monthly'} Insights
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="p-3 bg-white/50 rounded-lg">
               <p className="text-sm text-slate-700">
-                <strong>Pattern detected:</strong> You tend to feel most positive in the evenings, particularly after journaling.
+                <strong>Pattern detected:</strong> {analyticsData?.insights.pattern_detected}
               </p>
             </div>
             <div className="p-3 bg-white/50 rounded-lg">
               <p className="text-sm text-slate-700">
-                <strong>Growth area:</strong> Your mood improved by 15% this week compared to last week!
+                <strong>Growth area:</strong> {analyticsData?.insights.growth_area}
               </p>
             </div>
             <div className="p-3 bg-white/50 rounded-lg">
               <p className="text-sm text-slate-700">
-                <strong>Suggestion:</strong> Consider continuing your evening writing routine for optimal wellbeing.
+                <strong>Suggestion:</strong> {analyticsData?.insights.suggestion}
               </p>
             </div>
           </CardContent>

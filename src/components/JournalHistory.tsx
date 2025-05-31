@@ -282,15 +282,15 @@ const JournalHistory: React.FC<JournalHistoryProps> = ({ onNavigate }) => {
                           switch (action) {
                             case 'Seek Support':
                               // Navigate to support resources
-                              onNavigate && onNavigate('/support');
+                              onNavigate && onNavigate('support');
                               break;
                             case 'Schedule Check-in':
                               // Navigate to check-in scheduling
-                              onNavigate && onNavigate('/check-in');
+                              onNavigate && onNavigate('recommendations');
                               break;
                             case 'Continue Journaling':
                               // Navigate to new journal entry
-                              onNavigate && onNavigate('/journal/new');
+                              onNavigate && onNavigate('journal');
                               break;
                           }
                         }}
