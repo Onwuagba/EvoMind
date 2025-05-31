@@ -29,8 +29,7 @@ class JournalAnalysis(models.Model):
         models.CharField(max_length=255), blank=True)
     risk_level = models.CharField(max_length=10, choices=RISK_LEVELS)
     analysis_summary = models.TextField(null=True, blank=True)
-    analysis_type = models.CharField(
-        max_length=50, null=True, blank=True)
+    analysis_type = models.CharField(max_length=50, null=True, blank=True)  # e.g., 'gemini', 'openai'
     created_at = models.DateTimeField(auto_now_add=True)
     analyzed_at = models.DateTimeField(auto_now=True)
 

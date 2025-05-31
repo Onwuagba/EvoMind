@@ -6,6 +6,8 @@ from django.conf import settings
 import logging
 import json
 from openai import AsyncOpenAI
+from django.db.models import QuerySet
+from functools import partial
 
 from apps.journal.models import Journal
 from .models import JournalAnalysis
@@ -241,7 +243,7 @@ class GeminiService:
         """Generate a unique hash for the content."""
         return hashlib.sha256(content.encode()).hexdigest()
 
-    async def analyze_journal(self, user, journal: Journal) -> Dict[str, Any]:
+    async def analyze_journal(self, user, journal: Journal, update=False) -> Dict[str, Any]:
         """
         Analyzes a journal entry using Google's Gemini Pro and returns structured analysis.
         """
@@ -249,16 +251,9 @@ class GeminiService:
         cache_key = f"gemini_journal_analysis_{content_hash}"
         content = journal.content
 
-        # Try to get from cache first
-        cached_result = cache.get(cache_key)
-        if cached_result:
-            return {
-                **cached_result,
-                'source': 'cache'
-            }
-
         try:
-            print("Starting Gemini analysis for journal entry...")
+            logger.info(
+                f"Starting Gemini analysis for journal entry {journal.id}...")
             prompt = f"""
             You are a trauma-informed AI analyst. Analyze this journal entry and return only valid JSON.
             Journal entry: {content}
@@ -275,18 +270,51 @@ class GeminiService:
             Return only the JSON, no other text.
             """
 
-            response = await sync_to_async(self.model.generate_content)(prompt)
-            print(response)
+            # Make the model.generate_content call async-safe
+            generate_content = partial(
+                self.model.generate_content, prompt)
+            response = await sync_to_async(generate_content)()
             analysis = self._process_ai_response(response.text)
 
-            # Save to database without content hash
-            await JournalAnalysis.objects.acreate(
-                user=user,
-                journal=journal,
-                content=content,
-                analysis_type='gemini',
-                **analysis
-            )
+            # Get existing analysis using async-safe queryset
+            existing_analysis = await sync_to_async(lambda: JournalAnalysis.objects.filter(journal=journal).first())()
+
+            if existing_analysis:
+                # Update existing analysis using async-safe update
+                logger.info(
+                    f"Updating existing analysis for journal {journal.id}")
+                update_fields = {
+                    'content': content,
+                    'emotional_patterns': analysis['emotional_patterns'],
+                    'trigger_identification': analysis['trigger_identification'],
+                    'coping_suggestions': analysis['coping_suggestions'],
+                    'risk_level': analysis['risk_level'],
+                    'analysis_summary': analysis.get('analysis_summary', ''),
+                    'analysis_type': 'gemini'
+                }
+
+                await sync_to_async(
+                    lambda: JournalAnalysis.objects.filter(
+                        id=existing_analysis.id).update(**update_fields)
+                )()
+            else:
+                # Create new analysis using async-safe create
+                logger.info(
+                    f"Creating new analysis for journal {journal.id}")
+                create_analysis = partial(
+                    JournalAnalysis.objects.create,
+                    user=user,
+                    journal=journal,
+                    content=content,
+                    emotional_patterns=analysis['emotional_patterns'],
+                    trigger_identification=analysis['trigger_identification'],
+                    coping_suggestions=analysis['coping_suggestions'],
+                    risk_level=analysis['risk_level'],
+                    analysis_summary=analysis.get(
+                        'analysis_summary', ''),
+                    analysis_type='gemini'
+                )
+                await sync_to_async(create_analysis)()
 
             result = {
                 'emotional_patterns': analysis['emotional_patterns'],
@@ -294,15 +322,16 @@ class GeminiService:
                 'coping_suggestions': analysis['coping_suggestions'],
                 'risk_level': analysis['risk_level'],
                 'analysis_summary': analysis.get('analysis_summary', ''),
-                'source': 'ai'
+                'source': 'gemini'
             }
 
-            # Cache the result with the content hash
-            cache.set(cache_key, result, timeout=self.CACHE_TIMEOUT)
+            # Make cache.set async-safe
+            await sync_to_async(cache.set)(cache_key, result, timeout=self.CACHE_TIMEOUT)
             return result
 
         except Exception as e:
-            logger.error(f"Gemini Analysis error: {str(e)}")
+            logger.error(
+                f"Gemini Analysis error for journal {journal.id}: {str(e)}")
             raise
 
     async def analyze_trauma_pattern(self, user, data: Dict[str, Any]) -> Dict[str, Any]:

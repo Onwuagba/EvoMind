@@ -136,11 +136,11 @@ class JournalViewSet(viewsets.ModelViewSet):
             request.data['user'] = request.user.id
 
             # Don't allow changing before_mood after creation
-            if 'before_mood' in request.data and instance.before_mood:
-                return Response(
-                    {"detail": "Cannot modify before_mood after initial creation"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+            # if 'before_mood' in request.data and instance.before_mood:
+            #     return Response(
+            #         {"detail": "Cannot modify before_mood after initial creation"},
+            #         status=status.HTTP_400_BAD_REQUEST
+            #     )
                 
             serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
             serializer.is_valid(raise_exception=True)

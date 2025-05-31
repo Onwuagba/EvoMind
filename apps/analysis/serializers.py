@@ -8,7 +8,7 @@ class JournalAnalysisResponseSerializer(serializers.ModelSerializer):
     class Meta:
         model = JournalAnalysis
         fields = ['emotional_patterns', 'trigger_identification', 
-                 'coping_suggestions', 'risk_level', 'analyzed_at']
+                 'coping_suggestions', 'risk_level', 'analysis_summary', 'analyzed_at']
 
 class TraumaEventSerializer(serializers.Serializer):
     date = serializers.DateField()

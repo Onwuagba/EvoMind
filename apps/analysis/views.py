@@ -141,7 +141,6 @@ class JournalAnalysisView(APIView):
     def get(self, request, journal_id=None):
         """Get analysis for a specific journal entry"""
         try:
-            # Use regular ORM queries instead of sync_to_async
             analysis = JournalAnalysis.objects.filter(
                 journal_id=journal_id,
                 user=request.user

@@ -2,51 +2,38 @@ import asyncio
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from asgiref.sync import sync_to_async
-from django.conf import settings
 from apps.journal.models import Journal
 from apps.analysis.models import JournalAnalysis
 from apps.analysis.services import GeminiService
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Create sync_to_async versions of model operations
+get_analysis = sync_to_async(JournalAnalysis.objects.filter)
+create_analysis = sync_to_async(JournalAnalysis.objects.create)
 
 
 @receiver(post_save, sender=Journal)
 def analyze_journal_entry(sender, instance, created, **kwargs):
     """
-    Signal to analyze journal entries after they're saved
+    Signal handler for journal entry analysis
+    Runs on both creation and updates
     """
     async def run_analysis():
         try:
-            print(f"Analyzing journal entry: {instance.id} for user: {instance.user.id}")
-            # Check if analysis already exists
-            analysis = await sync_to_async(JournalAnalysis.objects.filter)(journal=instance).first()
-            if analysis:
-                return
+            logger.info(
+                f"Analyzing journal entry: {instance.id} for user: {instance.user.id}")
 
-            # Run analysis
+            # Run new analysis
             service = GeminiService()
-            analysis_result = await service.analyze_journal_entry({
-                'content': instance.content,
-                'mood_before': instance.before_mood,
-                'mood_after': instance.after_mood,
-            })
-
-            # Save analysis
-            await sync_to_async(JournalAnalysis.objects.create)(
-                user=instance.user,
-                journal=instance,
-                content=instance.content,
-                emotional_patterns=analysis_result.get(
-                    'emotional_patterns', []),
-                trigger_identification=analysis_result.get(
-                    'triggers', []),
-                coping_suggestions=analysis_result.get(
-                    'coping_suggestions', []),
-                risk_level=analysis_result.get('risk_level', 'low'),
-                analysis_summary=analysis_result.get('summary'),
-                analysis_type='gemini'
-            )
+            await service.analyze_journal(instance.user, instance)
 
         except Exception as e:
-            print(f"Error analyzing journal entry: {str(e)}")
+            logger.error(f"Error analyzing journal entry: {str(e)}")
+            raise
 
-    # Run analysis asynchronously
-    asyncio.create_task(run_analysis())
+    try:
+        asyncio.run(run_analysis())
+    except Exception as e:
+        logger.error(f"Failed to run analysis: {str(e)}")
