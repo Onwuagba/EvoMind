@@ -1,8 +1,12 @@
 import { api } from './axios';
 
-export interface DashboardResponse {
-    status: 'success' | 'error';
+export type DashboardResponse = {
+    status: 'success';
     data: {
+        user: {
+            firstName: string;
+            onboardingComplete: boolean;
+        };
         todayMood: number | null;
         streak: {
             count: number;
@@ -19,7 +23,7 @@ export interface DashboardResponse {
             moodCheckIns: number;
         };
     };
-}
+};
 
 export const getDashboardData = async (): Promise<DashboardResponse> => {
     const response = await api.get('/users/dashboard/');

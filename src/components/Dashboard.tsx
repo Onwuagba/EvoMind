@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Heart, PenTool, TrendingUp, Calendar, Award, Loader2 } from 'lucide-react';
+import { Heart, PenTool, TrendingUp, Calendar, Award, Loader2, Quote } from 'lucide-react';
 import MoodSelector from './MoodSelector';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { useSelector } from 'react-redux';
@@ -19,6 +19,10 @@ function toTitleCase(str: string) {
 }
 
 interface DashboardData {
+  user: {
+    firstName: string;
+    onboardingComplete: boolean;
+  };
   todayMood: number | null;
   streak: {
     count: number;
@@ -33,6 +37,11 @@ interface DashboardData {
   stats: {
     journalCount: number;
     moodCheckIns: number;
+  };
+  dailyQuote?: {
+    text: string | null;
+    author: string | null;
+    context: string | null;
   };
 }
 
@@ -51,12 +60,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         setIsLoading(true);
         const response = await getDashboardData();
         if (response.status === 'success') {
-          // Transform weekly trend data to ensure Sunday-Saturday order with 0 for missing days
-          const transformedData = {
+          const transformedData: DashboardData = {
             ...response.data,
-            weeklyTrend: transformWeeklyTrend(response.data.weeklyTrend)
+            weeklyTrend: transformWeeklyTrend(response.data.weeklyTrend),
+            user: response.data.user
           };
           setDashboardData(transformedData);
+          // Update userName from the dashboard data
+          if (transformedData.user?.firstName) {
+            setUserName(toTitleCase(transformedData.user.firstName));
+          }
         }
       } catch (err) {
         setError('Failed to load dashboard data');
@@ -68,12 +81,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
     fetchDashboardData();
   }, []);
-
-  useEffect(() => {
-    if (user?.firstName) {
-      setUserName(toTitleCase(user.firstName));
-    }
-  }, [user]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -221,6 +228,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Daily Quote Card - Moved up */}
+        {dashboardData?.dailyQuote?.text && (
+          <Card className="shadow-lg border-0 bg-gradient-to-r from-purple-400/10 to-blue-400/10 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-full bg-blue-100 shrink-0">
+                    <Quote className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <blockquote className="text-slate-800 font-medium italic leading-relaxed">
+                      "{dashboardData.dailyQuote.text}"
+                    </blockquote>
+                    {dashboardData.dailyQuote.author && (
+                      <cite className="block text-sm text-slate-600 mt-2 not-italic">
+                        — {dashboardData.dailyQuote.author}
+                      </cite>
+                    )}
+                  </div>
+                </div>
+                {dashboardData.dailyQuote.context && (
+                  <div className="text-sm text-slate-600 bg-white/50 rounded-lg p-3 mt-2">
+                    <p>{dashboardData.dailyQuote.context}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Weekly Trend */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
