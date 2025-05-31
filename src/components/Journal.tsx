@@ -321,10 +321,10 @@ const Journal: React.FC<JournalProps> = ({ onNavigate }) => {
         </Card>
 
         {/* Trauma Tracking Section */}
-        <TraumaTracking
+        {/* <TraumaTracking
           content={entry}
           onPatternDetected={(patterns) => setPatterns(patterns)}
-        />
+        /> */}
 
         {/* Professional Support Card */}
         <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
