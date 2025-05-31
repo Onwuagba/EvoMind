@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'apps.notifications',
     'apps.progress',
     'apps.export',
+    'apps.chat',
 ]
 
 MIDDLEWARE = [
