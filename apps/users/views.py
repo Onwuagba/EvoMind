@@ -284,6 +284,10 @@ class DashboardView(APIView):
             'title': 'Great Job!',
             'description': 'Your first day of journaling'
         },
+        2: {
+            'title': 'Keep going!',
+            'description': 'Day-2 of journaling'
+        },
         3: {
             'title': 'Keep it going!',
             'description': '3 days of consistent journaling'
