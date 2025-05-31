@@ -275,7 +275,7 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
-                className="flex-1 border-2 border-gray-200 focus:border-indigo-500 rounded-xl"
+                className="flex-1 border-2 border-gray-200 focus:border-indigo-500 rounded-xl text-black"
                 disabled={isLoading}
               />
               <Button
