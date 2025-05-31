@@ -1,17 +1,19 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    UserProfileView, 
-    UserSettingsView, 
-    OnboardingView, 
+    UserProfileView,
+    UserSettingsView,
+    OnboardingView,
     DashboardView,
     ExerciseViewSet,
-    SelfCareRoutineViewSet
+    SelfCareRoutineViewSet,
+    AnalyticsView
 )
 
 router = DefaultRouter()
 router.register(r'exercises', ExerciseViewSet, basename='exercise')
-router.register(r'routines', SelfCareRoutineViewSet, basename='routine')
+router.register(r'routines', SelfCareRoutineViewSet,
+                basename='routine')
 
 urlpatterns = [
     path('users/profile/', UserProfileView.as_view(), name='user-profile'),
@@ -21,5 +23,6 @@ urlpatterns = [
          name='user-onboarding'),
     path('users/dashboard/', DashboardView.as_view(),
          name='user-dashboard'),
+    path('users/analytics/', AnalyticsView.as_view(), name='user-analytics'),
     path('', include(router.urls)),
 ]

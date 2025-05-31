@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from django.core.cache import cache
 from drf_yasg.utils import swagger_auto_schema
 from apps.journal.models import DailyMood, Journal
+from apps.analysis.models import JournalAnalysis
 from .serializers import UserProfileSerializer, UserSettingsSerializer, OnboardingSerializer, ExerciseSerializer, SelfCareRoutineSerializer
 from .models import RoutineExercise, UserProfile, OnboardingStatus, Exercise, SelfCareRoutine
 from .throttling import UserProfileThrottle
@@ -14,6 +15,10 @@ from django.utils import timezone
 from datetime import timedelta
 from apps.analysis.services import AIAnalysisService, GeminiService
 from asgiref.sync import sync_to_async
+from django.db.models import Avg, Count
+from django.db.models.functions import ExtractHour, TruncHour, ExtractWeekDay
+from django.db.models import Q
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -633,3 +638,159 @@ class SelfCareRoutineViewSet(viewsets.ModelViewSet):
         if not categories:
             categories = ['journaling']  # default category
         return categories
+
+
+class AnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_date_range(self, period):
+        today = timezone.now().date()
+        if period == 'week':
+            start_date = today - timedelta(days=7)
+        else:  # month
+            start_date = today - timedelta(days=30)
+        return start_date, today
+
+    def get_mood_stats(self, user, start_date, end_date):
+        moods = DailyMood.objects.filter(
+            user=user,
+            date__range=[start_date, end_date]
+        )
+        avg_mood = moods.aggregate(Avg('mood'))['mood__avg'] or 0
+        return round(avg_mood, 1)
+
+    def get_writing_times(self, user, start_date, end_date):
+        entries = Journal.objects.filter(
+            user=user,
+            created_at__date__range=[start_date, end_date]
+        ).annotate(
+            hour=ExtractHour('created_at')
+        )
+
+        time_periods = {
+            'morning': Q(hour__gte=5) & Q(hour__lt=12),
+            'afternoon': Q(hour__gte=12) & Q(hour__lt=17),
+            'evening': Q(hour__gte=17) & Q(hour__lt=22),
+            'night': Q(hour__gte=22) | Q(hour__lt=5)
+        }
+
+        writing_times = {}
+        for period, query in time_periods.items():
+            count = entries.filter(query).count()
+            writing_times[period] = count
+
+        return writing_times
+
+    def get_emotional_words(self, user, start_date, end_date):
+        # Get analyses from the period
+        analyses = JournalAnalysis.objects.filter(
+            user=user,
+            journal__created_at__date__range=[start_date, end_date]
+        )
+
+        word_frequency = defaultdict(int)
+        for analysis in analyses:
+            for emotion in analysis.emotional_patterns:
+                word_frequency[emotion.lower()] += 1
+
+        return dict(sorted(word_frequency.items(), key=lambda x: x[1], reverse=True)[:6])
+
+    def get_timeline_data(self, user, start_date, end_date):
+        """Get timeline data with proper weekday handling"""
+        moods = DailyMood.objects.filter(
+            user=user,
+            date__range=[start_date, end_date]
+        )
+
+        if end_date - start_date > timedelta(days=7):
+            # Monthly view: average by weekday
+            weekday_averages = (
+                moods
+                .annotate(weekday=ExtractWeekDay('date'))
+                .values('weekday')
+                .annotate(avg_mood=Avg('mood'))
+                .order_by('weekday')
+            )
+
+            # Create a mapping of weekday numbers to averages
+            weekday_map = {
+                item['weekday']: item['avg_mood'] or 0 for item in weekday_averages}
+            weekdays = ['Mon', 'Tue', 'Wed',
+                        'Thu', 'Fri', 'Sat', 'Sun']
+            timeline = [
+                {
+                    'date': day,
+                    'mood': weekday_map.get(i + 1, 0)
+                }
+                for i, day in enumerate(weekdays)
+            ]
+        else:
+            # Weekly view: show last 7 days of data
+            timeline = []
+            # Start 6 days before end date
+            current = end_date - timedelta(days=6)
+
+            while current <= end_date:
+                mood = moods.filter(date=current).first()
+                timeline.append({
+                    'date': current.strftime('%a'),
+                    'mood': mood.mood if mood else 0
+                })
+                current += timedelta(days=1)
+
+        return timeline
+
+    def get_insights(self, user, start_date, end_date):
+        # Get previous period for comparison
+        period_length = (end_date - start_date).days
+        prev_start = start_date - timedelta(days=period_length)
+        prev_end = start_date - timedelta(days=1)
+
+        current_mood_avg = self.get_mood_stats(
+            user, start_date, end_date)
+        prev_mood_avg = self.get_mood_stats(
+            user, prev_start, prev_end)
+
+        writing_times = self.get_writing_times(
+            user, start_date, end_date)
+        best_time = max(writing_times.items(), key=lambda x: x[1])[0]
+
+        mood_change = ((current_mood_avg - prev_mood_avg) /
+                       prev_mood_avg * 100) if prev_mood_avg else 0
+
+        return {
+            'pattern_detected': f"You tend to feel most positive in the {best_time}s, particularly after journaling.",
+            'growth_area': f"Your mood {'improved' if mood_change > 0 else 'decreased'} by {abs(round(mood_change))}% compared to last {'week' if period_length == 7 else 'month'}!",
+            'suggestion': f"Consider continuing your {best_time} writing routine for optimal wellbeing."
+        }
+
+    def get(self, request):
+        try:
+            period = request.query_params.get('period', 'week')
+            start_date, end_date = self.get_date_range(period)
+            user = request.user
+
+            response_data = {
+                'average_mood': self.get_mood_stats(user, start_date, end_date),
+                'streak': user.get_streak_count(),
+                'timeline': self.get_timeline_data(user, start_date, end_date),
+                'writing_times': self.get_writing_times(user, start_date, end_date),
+                'emotional_words': self.get_emotional_words(user, start_date, end_date),
+                'insights': self.get_insights(user, start_date, end_date)
+            }
+
+            return Response({
+                'status': 'success',
+                'data': response_data
+            })
+
+        except Exception as e:
+            logger.error(f"Error generating analytics: {str(e)}")
+            return Response({
+                'status': 'error',
+                'error': {
+                    'code': 'analytics_error',
+                    'message': 'Failed to generate analytics',
+                    'details': str(e)
+                }
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
