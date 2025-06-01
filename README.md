@@ -3,13 +3,15 @@
 
 > An AI-powered emotional wellness companion that helps you understand and navigate your emotional journey.
 
-![EvoMind Banner](assets/banner.png)
+### Blog post: [EvoMind](https://dev.to/onwuagba/finding-peace-within-how-evomind-uses-ai-to-guide-you-through-emotional-healing-cgp)
+
+### Backend code is found in the backend [branch](https://github.com/Onwuagba/EvoMind/tree/backend) with its own readme
 
 ## 🌟 Overview
 
 EvoMind is a revolutionary mental health application that combines advanced AI technology with therapeutic journaling to provide personalized emotional support and insights. Built with React, TypeScript, and powered by cutting-edge AI models, it offers a safe, private space for emotional expression and growth.
 
-### Backend code is found in the backend [branch](https://github.com/Onwuagba/EvoMind/tree/backend) with its own readme
+
 
 ## ✨ Key Features
 
