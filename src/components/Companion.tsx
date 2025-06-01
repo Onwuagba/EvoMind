@@ -63,31 +63,32 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
         const response = await api.get<PaginatedResponse>('/chat/');
         if (response.data.results) {
           // Transform chat history into messages format
-          const historicalMessages = response.data.results.reverse().flatMap(session =>
-            session.messages.map(msg => [
-              {
-                role: 'user' as const,
-                content: msg.content,
-                timestamp: new Date(msg.created_at)
-              },
-              {
-                role: 'assistant' as const,
-                content: msg.response,
-                timestamp: new Date(msg.created_at)
-              }
-            ]).flat()
-          );
+          const historicalMessages = response.data.results
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Sort sessions by date
+            .flatMap(session =>
+              session.messages.map(msg => [
+                {
+                  role: 'user' as const,
+                  content: msg.content,
+                  timestamp: new Date(msg.created_at)
+                },
+                {
+                  role: 'assistant' as const,
+                  content: msg.response,
+                  timestamp: new Date(msg.created_at)
+                }
+              ]).flat()
+            );
 
           setMessages([
             {
               role: 'assistant',
               content: "Hi, I'm your AI companion. How are you feeling today?",
-              timestamp: new Date()
+              timestamp: new Date(Date.now() - 1000) // Ensure welcome message appears before history
             },
             ...historicalMessages
           ]);
 
-          // Set pagination state
           setHasMore(!!response.data.next);
           setNextPage(response.data.next);
         }
@@ -165,22 +166,24 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
         setIsLoading(true);
         const response = await api.get<PaginatedResponse>(nextPage!);
 
-        const moreMessages = response.data.results.reverse().flatMap(session =>
-          session.messages.map(msg => [
-            {
-              role: 'user' as const,
-              content: msg.content,
-              timestamp: new Date(msg.created_at)
-            },
-            {
-              role: 'assistant' as const,
-              content: msg.response,
-              timestamp: new Date(msg.created_at)
-            }
-          ]).flat()
-        );
+        const moreMessages = response.data.results
+          .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+          .flatMap(session =>
+            session.messages.map(msg => [
+              {
+                role: 'user' as const,
+                content: msg.content,
+                timestamp: new Date(msg.created_at)
+              },
+              {
+                role: 'assistant' as const,
+                content: msg.response,
+                timestamp: new Date(msg.created_at)
+              }
+            ]).flat()
+          );
 
-        setMessages(prev => [...prev, ...moreMessages]);
+        setMessages(prev => [...moreMessages, ...prev]); // Prepend older messages
         setHasMore(!!response.data.next);
         setNextPage(response.data.next);
       } catch (error) {
