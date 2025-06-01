@@ -52,10 +52,10 @@ EvoMind is a revolutionary mental health application that combines advanced AI t
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/soul-pattern-insight.git
+git clone https://github.com/yourusername/evomind.git
 
 # Install dependencies
-cd soul-pattern-insight
+cd evomind
 npm install
 
 # Set up environment variables
@@ -64,17 +64,6 @@ cp .env.example .env
 # Start development server
 npm run dev
 ```
-
-## 🔒 Security & Privacy
-
-- End-to-end encryption for all user data
-- GDPR and HIPAA compliant
-- Regular security audits
-- Transparent data usage policies
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our Contributing Guidelines for details.
 
 ## 🔗 Links
 
