@@ -1,73 +1,102 @@
-# Welcome to your Lovable project
 
-## Project info
+# EvoMind
 
-**URL**: https://lovable.dev/projects/16719b7b-6abd-4e24-b28b-34b16545a655
+> An AI-powered emotional wellness companion that helps you understand and navigate your emotional journey.
 
-## How can I edit this code?
+![EvoMind Banner](assets/banner.png)
 
-There are several ways of editing your application.
+## 🌟 Overview
 
-**Use Lovable**
+EvoMind is a revolutionary mental health application that combines advanced AI technology with therapeutic journaling to provide personalized emotional support and insights. Built with React, TypeScript, and powered by cutting-edge AI models, it offers a safe, private space for emotional expression and growth.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/16719b7b-6abd-4e24-b28b-34b16545a655) and start prompting.
+## ✨ Key Features
 
-Changes made via Lovable will be committed automatically to this repo.
+### 🤖 AI-Enhanced Journaling
+- **Intelligent Analysis**: Leverages Gemini AI to analyze emotional patterns
+- **Dynamic Prompts**: AI-generated writing prompts tailored to your emotional state
+- **Sentiment Tracking**: Visual representation of emotional trends over time
+- **Risk Assessment**: Proactive monitoring for potential mental health concerns
 
-**Use your preferred IDE**
+### 💬 AI Companion
+- **24/7 Emotional Support**: Always-available AI companion for conversations
+- **Context-Aware**: Maintains conversation history for meaningful interactions
+- **Professional Boundaries**: Clear distinction between AI support and professional help
+- **Multi-Modal Interaction**: Text and voice-based communication options
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 📊 Analytics Dashboard
+- **Emotional Timeline**: Track your mood patterns over time
+- **Word Cloud Analysis**: Visualize frequently expressed emotions
+- **Journal Impact**: Measure the effectiveness of journaling sessions
+- **Progress Tracking**: Monitor your emotional well-being journey
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🛠️ Technical Stack
 
-Follow these steps:
+### Frontend
+- React + TypeScript
+- TailwindCSS for styling
+- Shadcn UI components
+- Vite for build tooling
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Backend
+- Django REST Framework
+- PostgreSQL database
+- Redis for caching
+- JWT authentication
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### AI Integration
+- Gemini AI API
+- GPT-4 API
+- Custom ML models
 
-# Step 3: Install the necessary dependencies.
-npm i
+## 📦 Installation
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/soul-pattern-insight.git
+
+# Install dependencies
+cd soul-pattern-insight
+npm install
+
+# Set up environment variables
+cp .env.example .env
+
+# Start development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 🔒 Security & Privacy
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- End-to-end encryption for all user data
+- GDPR and HIPAA compliant
+- Regular security audits
+- Transparent data usage policies
 
-**Use GitHub Codespaces**
+## 🤝 Contributing
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+We welcome contributions! Please see our Contributing Guidelines for details.
 
-## What technologies are used for this project?
+## 🔗 Links
 
-This project is built with:
+- [API Reference](/docs)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## ⚡ Quick Start
 
-## How can I deploy this project?
+1. Sign up for an account
+2. Complete the initial emotional assessment
+3. Start journaling with AI assistance
+4. Explore your emotional patterns in the dashboard
+5. Connect with the AI companion for support
 
-Simply open [Lovable](https://lovable.dev/projects/16719b7b-6abd-4e24-b28b-34b16545a655) and click on Share -> Publish.
+## 🎯 Roadmap
 
-## Can I connect a custom domain to my Lovable project?
+- [ ] System-wide Encryption
+- [ ] Voice journaling support
+- [ ] Group therapy features
+- [ ] Integration with wearable devices
+- [ ] Expanded language support
+- [ ] Therapist portal
 
-Yes, you can!
+---
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Made with ❤️ by the EvoMind Team
