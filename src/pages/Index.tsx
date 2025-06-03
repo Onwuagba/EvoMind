@@ -58,7 +58,7 @@ const Index = () => {
 
   // For users pending onboarding (new signups) or authenticated users who haven't completed onboarding
   if (showOnboarding) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
+    return <Onboarding onComplete={handleOnboardingComplete} onNavigate={setCurrentPage} />;
   }
 
   const renderCurrentPage = () => {

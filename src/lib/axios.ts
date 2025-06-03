@@ -15,13 +15,16 @@ export const api = axios.create({
 api.interceptors.request.use(
     (config) => {
         // Don't add token for refresh token endpoint
-        if (config.url?.includes('/auth/refresh-token')) {
+        if (config.url?.includes('/auth/refresh-token') || config.url?.includes('/auth/login') || config.url?.includes('/auth/register')) {
             return config;
         }
 
         const token = localStorage.getItem('accessToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+            console.log('Token found and set:', token); // Debug log
+        } else {
+            console.log('No token found'); // Debug log
         }
         return config;
     },

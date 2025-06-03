@@ -9,12 +9,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ArrowLeft, ArrowRight, Check, Shield, Target, User, Mail, KeyRound } from 'lucide-react';
 import MoodSelector from './MoodSelector';
+import axios from 'axios';
+import { useToast } from '@/components/ui/use-toast';
+import { api } from '@/lib/axios';
 
 interface OnboardingProps {
   onComplete: () => void;
+  onNavigate: (page: string) => void;
 }
 
-const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
+const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onNavigate }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
 
@@ -32,17 +36,84 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   // Email validation function
   const isValidEmail = (email: string): boolean => {
     return /\S+@\S+\.\S+/.test(email);
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
-      onComplete();
+      setIsLoading(true);
+      try {
+        const registerResponse = await api.post('/auth/register/', {
+          email,
+          password,
+          confirm_password: confirmPassword,
+          first_name: firstName,
+          last_name: lastName
+        });
+
+        if (registerResponse.data.status === 'success') {
+          const { access, refresh } = registerResponse.data.data;
+
+          // Store tokens
+          localStorage.setItem('accessToken', access);
+          localStorage.setItem('refreshToken', refresh);
+
+          // Set token in axios headers
+          api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
+
+          // Verify token is set
+          console.log('Token set:', access);
+
+          // Make authenticated requests
+          await api.post('/mood/', { mood: currentMood });
+          const dashboardResponse = await api.get('/users/dashboard/');
+
+          if (dashboardResponse.data.status === 'success') {
+            onNavigate('dashboard');
+            onComplete();
+          }
+        }
+      } catch (error: any) {
+        if (error.response?.data?.error) {
+          const errors = error.response.data.error;
+
+          // Handle password errors
+          if (errors.password && Array.isArray(errors.password)) {
+            errors.password.forEach((message: string) => {
+              toast({
+                variant: "destructive",
+                title: "Password Error",
+                description: message,
+                duration: 5000,
+              });
+            });
+          } else {
+            const errorMessage = typeof errors === 'string' ? errors : 'Registration failed. Please try again.';
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: errorMessage,
+              duration: 5000,
+            });
+          }
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "An unexpected error occurred. Please try again.",
+            duration: 5000,
+          });
+        }
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -57,7 +128,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-teal-50 p-4 flex items-center justify-center">
       <Card className="w-full max-w-md border-0 shadow-lg bg-white/90 backdrop-blur-sm">
         <CardHeader className="text-center">
-          <CardTitle>Welcome to Your Emotional Journey</CardTitle>
+          {/* <CardTitle>Welcome to EvoMind</CardTitle> */}
           <div className="flex justify-center items-center gap-1.5 mt-2">
             {Array.from({ length: totalSteps }).map((_, idx) => (
               <div
@@ -97,7 +168,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
               <div className="space-y-1.5">
                 <p className="text-gray-500 text-xs mb-2">All fields are required</p>
-                
+
                 <div className="flex">
                   <div className="flex items-center justify-center px-3 bg-gradient-to-r from-blue-400 to-teal-400 text-white rounded-l-md border border-r-0 border-teal-400">
                     <User className="h-4 w-4" />
@@ -110,7 +181,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     className="border-gray-200 focus:border-teal-400 focus:ring-teal-400 bg-white text-gray-800 placeholder:text-gray-400 rounded-l-none"
                   />
                 </div>
-                
+
                 <div className="flex">
                   <div className="flex items-center justify-center px-3 bg-gradient-to-r from-blue-400 to-teal-400 text-white rounded-l-md border border-r-0 border-teal-400">
                     <User className="h-4 w-4" />
@@ -123,7 +194,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     className="border-gray-200 focus:border-teal-400 focus:ring-teal-400 bg-white text-gray-800 placeholder:text-gray-400 rounded-l-none"
                   />
                 </div>
-                
+
                 <div className="flex">
                   <div className="flex items-center justify-center px-3 bg-gradient-to-r from-blue-400 to-teal-400 text-white rounded-l-md border border-r-0 border-teal-400">
                     <Mail className="h-4 w-4" />
@@ -141,7 +212,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 {emailTouched && email !== '' && !isValidEmail(email) && (
                   <p className="text-red-500 text-sm mt-1">Please enter a valid email address</p>
                 )}
-                
+
                 <div className="flex">
                   <div className="flex items-center justify-center px-3 bg-gradient-to-r from-blue-400 to-teal-400 text-white rounded-l-md border border-r-0 border-teal-400">
                     <KeyRound className="h-4 w-4" />
@@ -156,10 +227,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                     className="border-gray-200 focus:border-teal-400 focus:ring-teal-400 bg-white text-gray-800 placeholder:text-gray-400 rounded-l-none"
                   />
                 </div>
-                {passwordTouched && password.length < 6 && password !== '' && (
-                  <p className="text-red-500 text-sm mt-1">Password must be at least 6 characters</p>
+                {passwordTouched && password.length < 8 && password !== '' && (
+                  <p className="text-red-500 text-sm mt-1">Password must be at least 8 characters</p>
                 )}
-                
+
                 <div className="flex">
                   <div className="flex items-center justify-center px-3 bg-gradient-to-r from-blue-400 to-teal-400 text-white rounded-l-md border border-r-0 border-teal-400">
                     <KeyRound className="h-4 w-4" />
@@ -396,9 +467,19 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             onClick={handleNextStep}
             className="bg-teal-500 hover:bg-teal-600 text-white"
             disabled={
-              (currentStep === 1 && currentMood === null) || 
-              (currentStep === 2 && (firstName === '' || lastName === '' || email === '' || !isValidEmail(email) || password === '' || password.length < 6 || confirmPassword === '' || password !== confirmPassword)) ||
-              (currentStep === 3 && goals.length === 0) || 
+              isLoading ||
+              (currentStep === 1 && currentMood === null) ||
+              (currentStep === 2 && (
+                firstName === '' ||
+                lastName === '' ||
+                email === '' ||
+                !isValidEmail(email) ||
+                password === '' ||
+                password.length < 8 || // Updated from 6 to 8
+                confirmPassword === '' ||
+                password !== confirmPassword
+              )) ||
+              (currentStep === 3 && goals.length === 0) ||
               (currentStep === 4 && !privacyConsent)
             }
           >
@@ -409,8 +490,36 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
               </>
             ) : (
               <>
-                Get Started
-                <Check className="w-4 h-4 ml-2" />
+                {isLoading ? (
+                  <div className="flex items-center">
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Processing...
+                  </div>
+                ) : (
+                  <>
+                    Get Started
+                    <Check className="w-4 h-4 ml-2" />
+                  </>
+                )}
               </>
             )}
           </Button>
