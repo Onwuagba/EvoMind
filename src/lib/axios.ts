@@ -36,17 +36,22 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Ignore 401 from login/register endpoints
+        const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+            originalRequest.url?.includes('/auth/register');
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
             originalRequest._retry = true;
 
             try {
                 const refreshToken = localStorage.getItem('refreshToken');
                 // Create a new axios instance for refresh token request
-                const response = await axios.post(`${baseURL}/auth/refresh-token/`, {
+                const response = await axios.post(`${baseURL}auth/refresh-token/`, {
                     refresh: refreshToken
                 });
 
-                const { access } = response.data;
+                // Fix: access token is in response.data.data.access
+                const { data: { access } } = response.data;
                 localStorage.setItem('accessToken', access);
 
                 // Update the failed request with new token
