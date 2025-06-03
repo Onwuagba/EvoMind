@@ -62,9 +62,9 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
       try {
         const response = await api.get<PaginatedResponse>('/chat/');
         if (response.data.results) {
-          // Transform chat history into messages format
+          // Transform chat history into messages format, oldest first
           const historicalMessages = response.data.results
-            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Sort sessions by date
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
             .flatMap(session =>
               session.messages.map(msg => [
                 {
@@ -84,7 +84,7 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
             {
               role: 'assistant',
               content: "Hi, I'm your AI companion. How are you feeling today?",
-              timestamp: new Date(Date.now() - 1000) // Ensure welcome message appears before history
+              timestamp: new Date(0) // Put welcome message at the very top
             },
             ...historicalMessages
           ]);
@@ -115,11 +115,12 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
 
     try {
       setIsLoading(true);
-      setMessages(prev => [...prev, {
-        role: 'user',
+      const userMessage = {
+        role: 'user' as const,
         content: inputMessage,
         timestamp: new Date()
-      }]);
+      };
+      setMessages(prev => [...prev, userMessage]);
       setInputMessage('');
 
       const response = await api.post<ChatResponse>('/chat/send_message/', {
@@ -127,14 +128,12 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
       });
 
       if (response.data.status === 'success') {
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
+        const assistantMessage: ChatMessage = {
+            role: 'assistant' as const,
             content: response.data.data.message.response,
             timestamp: new Date()
-          }
-        ]);
+          };
+        setMessages(prev => [...prev, assistantMessage]);
       }
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -183,7 +182,7 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
             ]).flat()
           );
 
-        setMessages(prev => [...moreMessages, ...prev]); // Prepend older messages
+        setMessages(prev => [...moreMessages, ...prev]); // Prepend older messages at the top
         setHasMore(!!response.data.next);
         setNextPage(response.data.next);
       } catch (error) {
