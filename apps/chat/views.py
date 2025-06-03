@@ -121,7 +121,8 @@ class ChatViewSet(viewsets.ModelViewSet):
                         'content': chat_message.content,
                         'response': chat_message.response,
                     },
-                    'suggestions': response['suggestions']
+                    'suggestions': response['suggestions'],
+                    'needs_human_support': response['needs_human_support']
                 }
             })
 
