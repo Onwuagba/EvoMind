@@ -395,6 +395,14 @@ class DashboardView(APIView):
 
     def get_daily_quote(self, user, mood_data, journal_entries):
         """Get AI-generated quote based on previous day's context"""
+        # Check if user joined today
+        if user.date_joined.date() == timezone.now().date():
+            return {
+                'quote': "Every journey of self-discovery begins with a single reflection. Welcome to your personal space for growth and mindfulness.",
+                'author': "EvoMind",
+                'context': "Today marks the beginning of your mindfulness journey. Take a moment to check in with yourself and record your first mood."
+            }
+
         yesterday = timezone.now().date() - timedelta(days=1)
         cache_key = f'daily_quote_{user.id}_{yesterday.strftime("%Y-%m-%d")}'
         cached_quote = cache.get(cache_key)
