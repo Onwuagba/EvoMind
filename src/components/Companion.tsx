@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Send, ArrowLeft, Loader2 } from 'lucide-react';
 import { api } from '@/lib/axios';
 import { format } from 'date-fns';
+import CrisisSupport from './CrisisSupport';
 
 interface CompanionProps {
   onNavigate: (page: string) => void;
@@ -14,6 +15,8 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  suggestions?: string[];
+  needsSupport?: boolean;
 }
 
 interface ChatResponse {
@@ -24,6 +27,7 @@ interface ChatResponse {
       response: string;
     };
     suggestions: string[];
+    needs_human_support?: boolean;
   };
 }
 
@@ -54,6 +58,7 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasMore, setHasMore] = useState(false);
   const [nextPage, setNextPage] = useState<string | null>(null);
+  const [showCrisisModal, setShowCrisisModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch chat history on component mount
@@ -129,10 +134,12 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
 
       if (response.data.status === 'success') {
         const assistantMessage: ChatMessage = {
-            role: 'assistant' as const,
-            content: response.data.data.message.response,
-            timestamp: new Date()
-          };
+          role: 'assistant',
+          content: response.data.data.message.response,
+          timestamp: new Date(),
+          suggestions: response.data.data.suggestions,
+          needsSupport: response.data.data.needs_human_support
+        };
         setMessages(prev => [...prev, assistantMessage]);
       }
     } catch (error) {
@@ -203,6 +210,15 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
     return groups;
   }, {} as Record<string, ChatMessage[]>);
 
+  // Add helper function to handle suggestion clicks
+  const handleSuggestionClick = (suggestion: string) => {
+    if (suggestion.toLowerCase().includes('information')) {
+      setShowCrisisModal(true);
+    } else {
+      onNavigate('support');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-emerald-50 p-4 pb-20">
       <div className="max-w-md mx-auto space-y-6"> {/* Changed to max-w-md to match other pages */}
@@ -242,7 +258,7 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
                       </span>
                     </div>
                     {dateMessages.map((msg, idx) => (
-                      <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                         <div className={`rounded-2xl p-4 max-w-[80%] space-y-1 ${msg.role === 'user'
                           ? 'bg-indigo-600 text-white shadow-indigo-100'
                           : 'bg-gray-100 text-gray-900 shadow-gray-100'
@@ -253,6 +269,21 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
                             {format(msg.timestamp, 'p')}
                           </div>
                         </div>
+
+                        {msg.needsSupport && msg.suggestions && (
+                          <div className="mt-2 space-y-2 w-full">
+                            {msg.suggestions.map((suggestion, i) => (
+                              <Button
+                                key={i}
+                                variant="outline"
+                                className="w-full text-left justify-start bg-white/90 hover:bg-red-50 text-red-600 border-red-200 hover:border-red-300"
+                                onClick={() => handleSuggestionClick(suggestion)}
+                              >
+                                {suggestion}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -296,6 +327,12 @@ export const Companion: React.FC<CompanionProps> = ({ onNavigate }) => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Add Crisis Modal */}
+      <CrisisSupport
+        open={showCrisisModal}
+        onClose={() => setShowCrisisModal(false)}
+      />
     </div>
   );
 };
